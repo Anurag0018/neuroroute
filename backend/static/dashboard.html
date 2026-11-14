@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NeuroRoute — Live Execution Dashboard (Phase 1)</title>
+<style>
+  body { font-family: system-ui, sans-serif; background:#0f1220; color:#e8eaf2; margin:0; padding:24px; }
+  h1 { font-size:22px; } .sub { color:#9aa3c0; margin-bottom:20px; }
+  textarea { width:100%; height:70px; background:#171b30; color:#fff; border:1px solid #2c3355; border-radius:8px; padding:10px; }
+  button { background:#5b6cff; color:#fff; border:0; padding:10px 22px; border-radius:8px; cursor:pointer; margin-top:10px; }
+  .card { background:#171b30; border:1px solid #2c3355; border-radius:10px; padding:16px; margin-top:16px; }
+  .chip { display:inline-block; background:#232949; border-radius:20px; padding:5px 12px; margin:3px; font-size:13px; }
+  .chip b { color:#8fd0ff; } .bar { height:10px; background:#232949; border-radius:5px; overflow:hidden; }
+  .bar > div { height:100%; background:#43d17c; } table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { text-align:left; padding:5px 8px; border-bottom:1px solid #232949; } .muted { color:#9aa3c0; }
+</style>
+</head>
+<body>
+<h1>🧠 NeuroRoute — Live Execution Dashboard</h1>
+<div class="sub">Phase 1 placeholder for the Next.js frontend. Watch routing, the execution graph, confidence and cost per request.</div>
+<textarea id="q">Research how retrieval augmented generation improves factual accuracy</textarea>
+<br><button onclick="run()">Run request</button>
+<div id="out"></div>
+<script>
+async function run() {
+  const out = document.getElementById('out');
+  out.innerHTML = '<div class="card">Running…</div>';
+  const res = await fetch('/query', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({query: document.getElementById('q').value})});
+  const t = await res.json();
+  const nodes = t.execution_graph.map(n =>
+    `<span class="chip"><b>${n.node_id}</b> ${n.kind}${n.model_tier ? ' · ' + n.model_tier : ''} · ${n.status} · ${n.latency_ms}ms</span>`).join(' → ');
+  const pct = Math.round(t.confidence.confidence_score * 100);
+  out.innerHTML = `
+    <div class="card"><b>Answer</b><p>${t.answer}</p></div>
+    <div class="card"><b>Routing decision</b>
+      <p>Strategy: <b>${t.strategy}</b> · Complexity: ${t.complexity.complexity_score} · Task: ${t.analysis.task_type} · Risk: ${t.analysis.risk_level}</p>
+      <p class="muted">${t.rationale}</p></div>
+    <div class="card"><b>Execution graph</b><p>${nodes}</p></div>
+    <div class="card"><b>Confidence: ${pct}%</b> — decision: ${t.confidence.decision}
+      <div class="bar"><div style="width:${pct}%"></div></div>
+      <p class="muted">Evidence coverage ${t.confidence.evidence_coverage} · Retrieval relevance ${t.confidence.retrieval_relevance} · Validation ${t.confidence.validation_passed ? 'passed' : 'failed'}</p></div>
+    <div class="card"><b>Resource metrics</b>
+      <table><tr><th>Tokens</th><th>Cost (USD)</th><th>Latency</th><th>Model calls</th><th>Escalations</th></tr>
+      <tr><td>${t.metrics.tokens}</td><td>$${t.metrics.cost_usd}</td><td>${t.metrics.latency_ms}ms</td><td>${t.metrics.model_calls}</td><td>${t.metrics.escalations}</td></tr></table>
+      ${t.escalation_history.length ? '<p class="muted">Escalations: ' + JSON.stringify(t.escalation_history) + '</p>' : ''}
+    </div>`;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+# NeuroRoute — Phase 1 MVP
+
+**Adaptive AI Inference & Orchestration Platform**
+
+A lightweight decision model decides *how* a request should be answered —
+which models, which tools, how much budget — then a validated execution
+graph runs that plan, a confidence engine checks the result, and an
+escalation controller upgrades the path when the result isn't good enough.
+The goal is **quality per unit cost**, proved against fixed-pipeline
+baselines, not just speed.
+
+> Phase 1 scope (this scaffold): three execution paths, rule-based decision
+> model behind the real decision-model interface, custom DAG executor,
+> confidence + verification + escalation, budget enforcement, and full
+> per-request tracing. Everything runs **offline with mock models** — no
+> API keys needed. Later phases swap the insides, not the contracts.
+
+## The three Phase 1 paths
+
+| Path | Strategy | Graph | Used when |
+| --- | --- | --- | --- |
+| A | `direct_small` | small LLM | Simple, low-risk queries (e.g. "What is Python?") |
+| B | `rag_medium` | retrieve → medium LLM | Retrieval or moderate reasoning needed |
+| C | `verified_large` | [retrieve →] large LLM → verifier | High complexity or high risk |
+
+## Quick start
+
+> Requires Python 3.10+ (recommended). Python 3.9 also works — the
+> `eval_type_backport` dependency in requirements.txt covers the older
+> typing syntax — but recreate the venv with `python3.11` / `python3.12`
+> if you have it.
+
+```bash
+cd neuroroute
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn backend.main:app --reload
+```
+
+- API docs: http://localhost:8000/docs
+- Live dashboard: http://localhost:8000/dashboard
+- Try it:
+
+```bash
+curl -X POST localhost:8000/query -H 'Content-Type: application/json' \
+  -d '{"query": "What is Python?"}'
+
+curl -X POST localhost:8000/query -H 'Content-Type: application/json' \
+  -d '{"query": "Research how retrieval augmented generation improves factual accuracy"}'
+
+# Decision only, nothing executes:
+curl -X POST localhost:8000/route/preview -H 'Content-Type: application/json' \
+  -d '{"query": "Analyse this research paper", "attachments": ["paper.pdf"]}'
+```
+
+## Using real models (Ollama)
+
+By default NeuroRoute uses a deterministic mock adapter (no keys, no
+network). To run real local models:
+
+1. Install Ollama from https://ollama.com and make sure it is running.
+2. Pull the three tier models (one-time download, ~8 GB total):
+
+```bash
+ollama pull qwen2.5:1.5b    # small
+ollama pull llama3.2:3b     # medium + verifier
+ollama pull qwen2.5:7b      # large (slow on a MacBook Air — see note)
+```
+
+3. Start NeuroRoute in Ollama mode, in the same terminal:
+
+```bash
+export NR_MODEL_MODE=ollama
+uvicorn backend.main:app --reload
+```
+
+Check `GET /health` — it should report `"model_mode": "ollama"`.
+Model names are overridable: `NR_OLLAMA_SMALL`, `NR_OLLAMA_MEDIUM`,
+`NR_OLLAMA_LARGE`, `NR_OLLAMA_VERIFIER`, `NR_OLLAMA_URL`.
+
+> MacBook Air note: the 7B large model works but is slow. For day-to-day
+> development set `NR_OLLAMA_LARGE=llama3.2:3b` and switch back to the
+> 7B for the final demo/benchmark. Local inference reports cost $0 —
+> the routing still saves real time and tokens, which the traces show.
+
+Every `/query` response includes the answer **plus** the routing rationale,
+the execution graph with per-node latency, the confidence breakdown,
+escalation history, and actual tokens / cost / latency. Traces are kept at
+`/traces`, aggregate stats at `/metrics/summary`.
+
+## Tests
+
+```bash
+pytest -q
+```
+
+Covers routing decisions, graph validation (allowlist, cycles, missing
+dependencies, budget rejection), the end-to-end pipeline, and escalation
+when retrieval finds no evidence.
+
+## How it maps to the full architecture
+
+| Architecture subsystem | Phase 1 module |
+| --- | --- |
+| Input Analyzer | `backend/intelligence/input_analyzer.py` |
+| Complexity Estimator | `backend/intelligence/complexity_estimator.py` |
+| Decision-Making Model | `backend/intelligence/decision_model.py` (rules now, Jev/Laya later — same `propose_plan()` contract) |
+| Routing Policy | `backend/intelligence/routing_policy.py` |
+| Graph Generator / Validator | `backend/planning/` — the validator is the safety boundary: allowlisted node kinds, registered tiers, acyclic, within budget. An LLM proposes; it never executes unchecked. |
+| Graph Orchestrator | `backend/execution/graph_executor.py` (topological levels, concurrent within a level) |
+| Model Registry / Adapters | `backend/models/` (mock adapter now; real adapters implement `generate()`) |
+| Retrieval Engine | `backend/retrieval/` (in-memory overlap scoring now; Qdrant behind the same `search()` contract) |
+| Confidence Estimator | `backend/validation/confidence_estimator.py` |
+| Verification Engine | `backend/validation/answer_verifier.py` (evidence coverage, not a second opinion) |
+| Escalation Controller | `backend/validation/escalation_controller.py` (max escalations, budget-checked, never repeats a failed strategy) |
+| Budget Manager | `backend/optimization/budget_manager.py` (estimated vs actual kept separate) |
+| Observability | `backend/observability/execution_tracer.py` + dashboard |
+
+This is a **modular monolith** — one FastAPI app, modules matching the
+service boundaries in the full architecture. Split into services only when
+a module actually needs independent scaling.
+
+## Key design decisions (kept from the architecture)
+
+1. **The decision model is lightweight.** Routing must cost far less than
+   the inference it saves — and its cost is counted in every benchmark.
+2. **Execution is deterministic wherever possible.** Plans are validated
+   against an allowlist and a budget before anything runs.
+3. **Confidence is measured, not self-reported.** Evidence coverage,
+   validation, retrieval relevance and verifier agreement are combined;
+   thresholds (return ≥ 0.85, verify 0.60–0.84, escalate < 0.60) are
+   starting values to calibrate against measured correctness.
+4. **Escalation has hard limits** — max retries, max model calls, max
+   tokens, max cost, and no repeating the same failed strategy.
+
+## Phase 2 hooks
+
+- Replace `RuleBasedDecisionModel` with Jev / Laya structured output
+  (`backend/intelligence/decision_model.py`).
+- Implement `generate()` in `backend/models/llm_adapter.py` against Ollama /
+  vLLM / cloud APIs and put real measured costs + latencies in the registry.
+- Swap the retrieval corpus for embeddings + Qdrant behind `search()`.
+- Add the benchmark harness: Baseline A (always large), Baseline B (always
+  medium) vs NeuroRoute on one fixed mixed-difficulty dataset, reporting
+  accuracy / latency / cost distributions — including decision + verifier
+  overhead in NeuroRoute's totals.
