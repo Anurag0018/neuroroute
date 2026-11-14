@@ -62,13 +62,17 @@ class NeuroRoutePipeline:
                 retrieval_relevance=relevance, verification=verification)
 
             # Middle band: if no verifier node ran, run one ad-hoc check
-            # (a real extra model call, charged to the budget) and re-score.
+            # and re-score. The ad-hoc check is evidence-only (local
+            # coverage measurement, no extra model call): per the
+            # architecture, verification is evidence-based, not a second
+            # model's opinion. The verified_large path keeps its in-graph
+            # verifier model call for high-risk / high-complexity work.
             if confidence.decision == "verify" and verification is None:
                 vnode = PlanNode("verify_adhoc", "verify", "verifier")
                 vres = self.executor.node_executor.execute(
-                    vnode, query, dict(node_results))
+                    vnode, query, dict(node_results), use_llm_verifier=False)
                 usage.add(tokens=vres.tokens, cost_usd=vres.cost_usd,
-                          latency_ms=vres.latency_ms, model_calls=1)
+                          latency_ms=vres.latency_ms, model_calls=0)
                 node_results["verify_adhoc"] = vres
                 verified_adhoc = True
                 confidence = confidence_estimator.estimate(

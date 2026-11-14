@@ -163,3 +163,24 @@ a module actually needs independent scaling.
   medium) vs NeuroRoute on one fixed mixed-difficulty dataset, reporting
   accuracy / latency / cost distributions — including decision + verifier
   overhead in NeuroRoute's totals.
+
+## Post-benchmark tuning (v1.1, 2026-11-14)
+
+Two overhead leaks found in the full 24-query run, fixed without
+changing any routing decision:
+
+1. **Ad-hoc verification is evidence-only.** The middle-band check used
+   to make a verifier model call whose output nothing consumed, while
+   charging its tokens/latency to every medium query. Verification is
+   the local evidence-coverage measurement (per the architecture:
+   evidence-based, not a second opinion), so the check still runs and
+   can still escalate — it just no longer pays for a discarded call.
+   The verified_large path keeps its in-graph verifier model call.
+2. **Per-tier output caps** (`num_predict`: small 192, medium 384,
+   large 768, verifier 160). Small models occasionally rambled (one
+   easy query generated 470+ tokens). Caps apply to the baselines too
+   (same adapter), keeping comparisons even-handed.
+
+Tests: 27 passing (4 new in tests/test_tuning.py). Re-run
+`python -m benchmark.run_benchmark` with NR_MODEL_MODE=ollama to
+refresh the results table with tuned numbers.

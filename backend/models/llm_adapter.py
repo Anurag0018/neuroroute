@@ -71,6 +71,18 @@ OLLAMA_MODELS = {
     "verifier": os.environ.get("NR_OLLAMA_VERIFIER", "llama3.2:3b"),
 }
 
+# Per-tier output caps (max generated tokens). Routing should also bound
+# how much each tier may say: small models occasionally ramble (one easy
+# benchmark query generated 470+ tokens), and the verifier only needs a
+# verdict. Caps apply to every caller of this adapter — the benchmark
+# baselines included — so comparisons stay even-handed.
+OLLAMA_NUM_PREDICT = {
+    "small": 192,
+    "medium": 384,
+    "large": 768,
+    "verifier": 160,
+}
+
 
 def build_prompt(tier: str, query: str,
                  context_docs: list[dict] | None = None) -> str:
@@ -110,7 +122,9 @@ class OllamaLLMAdapter:
                  context_docs: list[dict] | None = None) -> Generation:
         prompt = build_prompt(tier, query, context_docs)
         payload = {"model": OLLAMA_MODELS[tier], "prompt": prompt,
-                   "stream": False, "options": {"temperature": 0.2}}
+                   "stream": False,
+                   "options": {"temperature": 0.2,
+                               "num_predict": OLLAMA_NUM_PREDICT[tier]}}
         started = time.time()
         try:
             # trust_env=False: never route a localhost call through a proxy.
