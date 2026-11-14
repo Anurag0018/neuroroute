@@ -83,6 +83,25 @@ Model names are overridable: `NR_OLLAMA_SMALL`, `NR_OLLAMA_MEDIUM`,
 > 7B for the final demo/benchmark. Local inference reports cost $0 —
 > the routing still saves real time and tokens, which the traces show.
 
+## Benchmark
+
+Fixed dataset of 24 queries (8 easy / 8 medium / 8 hard) in
+`benchmark/queries.json`, compared against two fixed pipelines on the
+same queries: always-large, and always-medium+RAG. NeuroRoute's totals
+include its own routing/verification overhead.
+
+```bash
+python -m benchmark.run_benchmark                  # mock models: checks the harness only
+NR_MODEL_MODE=ollama python -m benchmark.run_benchmark --limit 9   # real numbers
+```
+
+Output: per-query routing/latency/tokens/quality plus a summary with
+routing accuracy and % savings vs each baseline, written to
+`benchmark/results.json`. Quality is a transparent keyword-coverage
+proxy (see the notes in queries.json), not a judge model. Mock-mode
+numbers are meaningless by design — only the Ollama run produces
+reportable results.
+
 Every `/query` response includes the answer **plus** the routing rationale,
 the execution graph with per-node latency, the confidence breakdown,
 escalation history, and actual tokens / cost / latency. Traces are kept at

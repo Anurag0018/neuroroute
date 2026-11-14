@@ -43,6 +43,10 @@ class NeuroRoutePipeline:
         answer, confidence, node_results, verified_adhoc = "", None, {}, False
 
         while True:
+            # Ad-hoc verification belongs to THIS iteration's results;
+            # reset it so an escalation re-run never references the
+            # previous plan's node_results (KeyError regression).
+            verified_adhoc = False
             node_results = await self.executor.execute(plan, query)
             for r in node_results.values():
                 usage.add(tokens=r.tokens, cost_usd=r.cost_usd,

@@ -42,6 +42,33 @@ def test_unanswerable_retrieval_escalates():
     assert trace["strategy"] == "verified_large"
 
 
+class _OffTopicAdapter:
+    """Generate answers with zero overlap with retrieved evidence, so
+    ad-hoc verification fails and the pipeline escalates — the path that
+    used to crash with KeyError: 'verify_adhoc' after the re-run."""
+
+    def generate(self, tier, query, context_docs=None):
+        from backend.models.llm_adapter import Generation
+        return Generation("Bananas are a yellow tropical fruit.", 12, 0.001, 50)
+
+
+def test_adhoc_verify_then_escalation_does_not_crash():
+    pipe = NeuroRoutePipeline()
+    pipe.executor.node_executor.adapter = _OffTopicAdapter()
+    trace = pipe.process_sync("Research retrieval augmented generation")
+    assert trace["strategy"] == "verified_large"
+    assert trace["metrics"]["escalations"] == 1
+    assert all(g["status"] for g in trace["execution_graph"])
+
+
+def test_medical_emergency_query_takes_verified_path():
+    pipe = NeuroRoutePipeline()
+    trace = pipe.process_sync(
+        "I have chest pain and shortness of breath, what medicine should I take?")
+    assert trace["analysis"]["risk_level"] == "high"
+    assert trace["strategy"] == "verified_large"
+
+
 def test_route_preview_does_not_execute():
     r = client.post("/route/preview", json={"query": "What is Python?"})
     body = r.json()

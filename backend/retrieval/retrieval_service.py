@@ -26,11 +26,49 @@ _SEED_CORPUS = [
      "text": "Python is a programming language known for readable syntax, "
              "functions, lists and dictionaries, used widely for scripting "
              "and data science."},
+    {"id": "doc_embeddings", "title": "Embeddings and semantic search",
+     "text": "Embeddings are dense vector representations of text that "
+             "capture semantic meaning, so texts with similar meaning have "
+             "similar vectors and semantic search can find relevant "
+             "documents by vector similarity."},
+    {"id": "doc_vectordb", "title": "Vector databases",
+     "text": "Vector databases store embeddings and support fast "
+             "approximate nearest neighbour search, enabling semantic "
+             "search and retrieval augmented generation over large "
+             "document collections."},
+    {"id": "doc_transformer", "title": "Transformer attention",
+     "text": "Transformers use self-attention so every token can attend "
+             "to every other token in the sequence, capturing long-range "
+             "context in parallel and forming the basis of modern "
+             "language models."},
+    {"id": "doc_quantization", "title": "Model quantization",
+     "text": "Quantization reduces model weights from 16 or 32 bit to "
+             "8 or 4 bit, shrinking memory size and inference cost and "
+             "increasing speed, with a small trade-off in accuracy."},
+    {"id": "doc_finetuning", "title": "Fine-tuning versus prompting",
+     "text": "Fine-tuning updates model weights on task data for "
+             "consistent behaviour, while prompting and retrieval leave "
+             "weights unchanged and steer the model with instructions "
+             "and context; the trade-off is cost and flexibility."},
+    {"id": "doc_learning_types", "title": "Supervised and unsupervised learning",
+     "text": "Supervised learning trains on labelled examples to "
+             "predict outputs, while unsupervised learning finds "
+             "structure such as clusters in unlabelled data."},
 ]
 
 
+_STOPWORDS = frozenset(
+    "the a an in of to and or for with how what is are does do why used use "
+    "using over into each other every can could should would this that it "
+    "its be by on at from as was were been has have had".split())
+
+
 def _tokens(text: str) -> Counter:
-    return Counter(re.findall(r"[a-z0-9]+", text.lower()))
+    # Stopwords removed: without this, unrelated documents match on
+    # shared filler words ("the", "in") and weak/false retrieval
+    # suppresses escalation for genuinely unanswerable queries.
+    return Counter(t for t in re.findall(r"[a-z0-9]+", text.lower())
+                   if t not in _STOPWORDS)
 
 
 def _cosine(a: Counter, b: Counter) -> float:

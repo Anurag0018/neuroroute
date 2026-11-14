@@ -25,7 +25,9 @@ _TASK_KEYWORDS = {
     "math": ("calculate", "solve", "equation", "integral", "probability of"),
 }
 _HIGH_RISK = ("medical", "diagnos", "legal advice", "lawsuit", "investment advice",
-              "prescription", "suicide")
+              "financial advice", "prescription", "suicide", "self-harm",
+              "chest pain", "dosage", "emergency", "what medicine",
+              "should i take", "symptom")
 _MEDIUM_RISK = ("financial", "password", "security", "personal data")
 
 

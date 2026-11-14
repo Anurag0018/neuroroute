@@ -1,0 +1,433 @@
+{
+ "notes": "Fixed benchmark set for NeuroRoute vs fixed-pipeline baselines. expected_strategy is the path NeuroRoute *should* choose. expected_keywords are alternative groups: a group counts as covered if ANY of its words appears in the answer (case-insensitive). Quality = covered groups / total groups. This is a transparent proxy, not a judge model.",
+ "queries": [
+  {
+   "expected_keywords": [
+    [
+     "python"
+    ],
+    [
+     "programming",
+     "language"
+    ]
+   ],
+   "expected_strategy": "direct_small",
+   "id": "easy_1",
+   "level": "easy",
+   "query": "What is Python?"
+  },
+  {
+   "expected_keywords": [
+    [
+     "central"
+    ],
+    [
+     "processing"
+    ],
+    [
+     "unit"
+    ]
+   ],
+   "expected_strategy": "direct_small",
+   "id": "easy_2",
+   "level": "easy",
+   "query": "What does CPU stand for?"
+  },
+  {
+   "expected_keywords": [
+    [
+     "variable"
+    ],
+    [
+     "value",
+     "data",
+     "store"
+    ]
+   ],
+   "expected_strategy": "direct_small",
+   "id": "easy_3",
+   "level": "easy",
+   "query": "What is a variable in programming?"
+  },
+  {
+   "expected_keywords": [
+    [
+     "hypertext"
+    ],
+    [
+     "markup"
+    ]
+   ],
+   "expected_strategy": "direct_small",
+   "id": "easy_4",
+   "level": "easy",
+   "query": "What does HTML stand for?"
+  },
+  {
+   "expected_keywords": [
+    [
+     "step"
+    ],
+    [
+     "problem",
+     "task"
+    ]
+   ],
+   "expected_strategy": "direct_small",
+   "id": "easy_5",
+   "level": "easy",
+   "query": "What is an algorithm?"
+  },
+  {
+   "expected_keywords": [
+    [
+     "paris"
+    ]
+   ],
+   "expected_strategy": "direct_small",
+   "id": "easy_6",
+   "level": "easy",
+   "query": "What is the capital of France?"
+  },
+  {
+   "expected_keywords": [
+    [
+     "366"
+    ]
+   ],
+   "expected_strategy": "direct_small",
+   "id": "easy_7",
+   "level": "easy",
+   "query": "How many days are in a leap year?"
+  },
+  {
+   "expected_keywords": [
+    [
+     "data"
+    ],
+    [
+     "store",
+     "organise",
+     "organize",
+     "manage"
+    ]
+   ],
+   "expected_strategy": "direct_small",
+   "id": "easy_8",
+   "level": "easy",
+   "query": "What is a database used for?"
+  },
+  {
+   "expected_keywords": [
+    [
+     "retrieval"
+    ],
+    [
+     "document",
+     "evidence",
+     "source"
+    ],
+    [
+     "accuracy",
+     "factual"
+    ]
+   ],
+   "expected_strategy": "rag_medium",
+   "id": "med_1",
+   "level": "medium",
+   "query": "Research how retrieval augmented generation improves factual accuracy"
+  },
+  {
+   "expected_keywords": [
+    [
+     "graph"
+    ],
+    [
+     "nodes",
+     "edges",
+     "message passing"
+    ],
+    [
+     "molecular",
+     "molecule"
+    ]
+   ],
+   "expected_strategy": "rag_medium",
+   "id": "med_2",
+   "level": "medium",
+   "query": "Research how graph neural networks are used for molecular property prediction"
+  },
+  {
+   "expected_keywords": [
+    [
+     "decision"
+    ],
+    [
+     "confidence"
+    ],
+    [
+     "rout",
+     "path"
+    ]
+   ],
+   "expected_strategy": "rag_medium",
+   "id": "med_3",
+   "level": "medium",
+   "query": "Explain how NeuroRoute routes requests using a decision model and confidence estimation"
+  },
+  {
+   "expected_keywords": [
+    [
+     "python"
+    ],
+    [
+     "data"
+    ],
+    [
+     "syntax",
+     "readable",
+     "libraries"
+    ]
+   ],
+   "expected_strategy": "rag_medium",
+   "id": "med_4",
+   "level": "medium",
+   "query": "Research why Python is popular for data science and scripting"
+  },
+  {
+   "expected_keywords": [
+    [
+     "supervised"
+    ],
+    [
+     "unsupervised"
+    ],
+    [
+     "label"
+    ]
+   ],
+   "expected_strategy": "rag_medium",
+   "id": "med_5",
+   "level": "medium",
+   "query": "Compare supervised and unsupervised learning with examples"
+  },
+  {
+   "expected_keywords": [
+    [
+     "vector"
+    ],
+    [
+     "embedding"
+    ],
+    [
+     "semantic",
+     "similarity"
+    ]
+   ],
+   "expected_strategy": "rag_medium",
+   "id": "med_6",
+   "level": "medium",
+   "query": "Research how vector databases enable semantic search over embeddings"
+  },
+  {
+   "expected_keywords": [
+    [
+     "attention"
+    ],
+    [
+     "transformer"
+    ],
+    [
+     "token",
+     "sequence",
+     "context"
+    ]
+   ],
+   "expected_strategy": "rag_medium",
+   "id": "med_7",
+   "level": "medium",
+   "query": "Explain the transformer attention mechanism and why it matters for language models"
+  },
+  {
+   "expected_keywords": [
+    [
+     "quantization"
+    ],
+    [
+     "cost",
+     "memory",
+     "size"
+    ],
+    [
+     "speed",
+     "faster",
+     "latency"
+    ]
+   ],
+   "expected_strategy": "rag_medium",
+   "id": "med_8",
+   "level": "medium",
+   "query": "Research model quantization and its effect on inference cost and speed"
+  },
+  {
+   "attachments": [
+    "paper.pdf"
+   ],
+   "expected_keywords": [
+    [
+     "paper",
+     "study",
+     "research"
+    ],
+    [
+     "findings",
+     "results"
+    ]
+   ],
+   "expected_strategy": "verified_large",
+   "id": "hard_1",
+   "level": "hard",
+   "query": "Analyse this research paper and compare its findings with the literature"
+  },
+  {
+   "expected_keywords": [
+    [
+     "emergency",
+     "doctor",
+     "medical"
+    ],
+    [
+     "immediately",
+     "hospital",
+     "urgent"
+    ]
+   ],
+   "expected_strategy": "verified_large",
+   "id": "hard_2",
+   "level": "hard",
+   "query": "I have chest pain and shortness of breath, what medicine should I take?"
+  },
+  {
+   "attachments": [
+    "contract.pdf"
+   ],
+   "expected_keywords": [
+    [
+     "contract"
+    ],
+    [
+     "lawyer",
+     "legal",
+     "risk",
+     "terms"
+    ]
+   ],
+   "expected_strategy": "verified_large",
+   "id": "hard_3",
+   "level": "hard",
+   "query": "Analyse this legal contract and tell me whether I should sign it"
+  },
+  {
+   "expected_keywords": [
+    [
+     "retrieval"
+    ],
+    [
+     "fine-tuning",
+     "finetuning"
+    ],
+    [
+     "trade-off",
+     "tradeoff",
+     "cost",
+     "however"
+    ]
+   ],
+   "expected_strategy": "verified_large",
+   "id": "hard_4",
+   "level": "hard",
+   "query": "Analyse this enterprise report and compare retrieval augmented generation with fine-tuning for document question answering, including trade-offs",
+   "attachments": [
+    "enterprise_report.pdf"
+   ]
+  },
+  {
+   "attachments": [
+    "report.pdf"
+   ],
+   "expected_keywords": [
+    [
+     "financial",
+     "report"
+    ],
+    [
+     "risk"
+    ]
+   ],
+   "expected_strategy": "verified_large",
+   "id": "hard_5",
+   "level": "hard",
+   "query": "Analyse this financial report and assess the investment risks"
+  },
+  {
+   "expected_keywords": [
+    [
+     "graph"
+    ],
+    [
+     "transformer"
+    ],
+    [
+     "recommend",
+     "because",
+     "justif"
+    ]
+   ],
+   "expected_strategy": "verified_large",
+   "id": "hard_6",
+   "level": "hard",
+   "query": "Analyse this benchmark study comparing graph neural networks and transformers for molecular property prediction and recommend an approach",
+   "attachments": [
+    "benchmark_study.pdf"
+   ]
+  },
+  {
+   "expected_keywords": [
+    [
+     "step",
+     "phase",
+     "stage"
+    ],
+    [
+     "risk"
+    ],
+    [
+     "microservice"
+    ]
+   ],
+   "expected_strategy": "verified_large",
+   "id": "hard_7",
+   "level": "hard",
+   "query": "Analyse this migration assessment and design a detailed multi-step plan to migrate a legacy monolith to microservices",
+   "attachments": [
+    "migration_assessment.pdf"
+   ]
+  },
+  {
+   "expected_keywords": [
+    [
+     "risk"
+    ],
+    [
+     "diversif",
+     "not financial advice",
+     "advisor"
+    ]
+   ],
+   "expected_strategy": "verified_large",
+   "id": "hard_8",
+   "level": "hard",
+   "query": "Give me financial advice: analyse whether I should invest my entire savings in a single cryptocurrency"
+  }
+ ]
+}
