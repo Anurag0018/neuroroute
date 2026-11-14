@@ -184,3 +184,20 @@ changing any routing decision:
 Tests: 27 passing (4 new in tests/test_tuning.py). Re-run
 `python -m benchmark.run_benchmark` with NR_MODEL_MODE=ollama to
 refresh the results table with tuned numbers.
+
+## Results (full benchmark, 24 queries, tuned v1.1, local Ollama models)
+
+| System | Avg latency | Avg tokens | Quality |
+|---|---|---|---|
+| Always-large | 26,826 ms | 520 | 1.00 |
+| Always-medium + RAG | 2,682 ms | 183 | 0.88 |
+| **NeuroRoute** | **10,022 ms** | **440** | **0.97** |
+
+Routing accuracy 24/24. NeuroRoute: -62.6% latency and -15.5% tokens vs
+the always-large pipeline at comparable answer quality (0.97 vs 1.00).
+Always-medium is cheaper but lowest quality; NeuroRoute spends its
+budget only where quality needs it. Quality is a keyword-coverage
+proxy over fixed expected answers. An earlier untuned run measured
+13,107 ms / 542 tokens for NeuroRoute (-59.0% / -6.4% vs large);
+tuning v1.1 (see above) improved both without changing any routing
+decision.
