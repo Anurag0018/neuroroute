@@ -74,7 +74,12 @@ async def run_neuroroute(pipeline, item) -> dict:
             "quality": quality(result["answer"], item["expected_keywords"]),
             "strategy": result["strategy"], "initial_strategy": initial,
             "expected_strategy": item["expected_strategy"],
-            "routing_correct": initial == item["expected_strategy"]}
+            "routing_correct": initial == item["expected_strategy"],
+            # Final confidence + whether the run escalated — the raw
+            # material for threshold calibration (calibrate.py).
+            "confidence": result["confidence"]["confidence_score"],
+            "confidence_decision": result["confidence"]["decision"],
+            "escalated": bool(history)}
 
 
 def _avg(rows, system, key):
