@@ -62,14 +62,22 @@ export default function Home() {
   const inputRef = useRef(null);
 
   const refresh = useCallback(async () => {
-    try {
-      const [h, t, m] = await Promise.all([
-        api('/health'), api('/traces'), api('/metrics/summary')]);
-      setHealth(h); setTraces(t.traces || t); setMetrics(m);
-    } catch { /* backend not up yet */ }
+    // Each feed settles independently: with Promise.all, one failing
+    // endpoint rejected the whole batch and blanked every panel.
+    const [h, t, m] = await Promise.allSettled([
+      api('/health'), api('/traces'), api('/metrics/summary')]);
+    if (h.status === 'fulfilled') setHealth(h.value);
+    if (t.status === 'fulfilled') setTraces(t.value.traces || t.value);
+    if (m.status === 'fulfilled') setMetrics(m.value);
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  // Keep the console live: metrics/traces also reflect queries run
+  // elsewhere (dashboard, curl, MCP), not just this tab.
+  useEffect(() => {
+    const id = setInterval(refresh, 5000);
+    return () => clearInterval(id);
+  }, [refresh]);
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   async function upload(ev) {
@@ -292,6 +300,23 @@ export default function Home() {
           )}
 
           {/* ---------- metrics ---------- */}
+          {metrics === null && (
+            <div id="metrics" className="panel">
+              <div className="empty">
+                <div className="big">Metrics unavailable</div>
+                The API did not answer — check the backend is running on port 8000.
+              </div>
+            </div>
+          )}
+          {metrics && metrics.requests === 0 && (
+            <div id="metrics" className="panel">
+              <div className="empty">
+                <div className="big">No metrics yet</div>
+                The backend collects metrics in memory, so they start at zero
+                every time it restarts. Run a query and this strip populates.
+              </div>
+            </div>
+          )}
           {metrics && metrics.requests > 0 && (
             <div id="metrics">
               <div className="metric-strip">
