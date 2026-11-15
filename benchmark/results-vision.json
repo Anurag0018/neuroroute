@@ -1,0 +1,142 @@
+{
+ "summary": {
+  "queries": 3,
+  "routing_accuracy": "3/3",
+  "avg_latency_ms": {
+   "always_large": 6807.67,
+   "always_medium": 7856.67,
+   "neuroroute": 28634.67
+  },
+  "avg_tokens": {
+   "always_large": 125.33,
+   "always_medium": 239.0,
+   "neuroroute": 1441.33
+  },
+  "avg_quality": {
+   "always_large": 0.5,
+   "always_medium": 0.5,
+   "neuroroute": 0.5
+  },
+  "avg_cost_usd": {
+   "always_large": 0.000314,
+   "always_medium": 0.000143,
+   "neuroroute": 0.001104
+  },
+  "quality_per_dollar": {
+   "always_large": 1592.4,
+   "always_medium": 3496.5,
+   "neuroroute": 452.9
+  },
+  "neuroroute_savings_vs_always_large": {
+   "latency_pct": -320.6,
+   "tokens_pct": -1050.0,
+   "cost_pct": -251.6
+  },
+  "neuroroute_savings_vs_always_medium": {
+   "latency_pct": -264.5,
+   "tokens_pct": -503.1,
+   "cost_pct": -672.0
+  }
+ },
+ "rows": [
+  {
+   "id": "vis_1",
+   "level": "vision",
+   "always_large": {
+    "latency_ms": 5608,
+    "tokens": 149,
+    "cost_usd": 0.000373,
+    "quality": 0.5
+   },
+   "always_medium": {
+    "latency_ms": 4122,
+    "tokens": 84,
+    "cost_usd": 5e-05,
+    "quality": 0.5
+   },
+   "neuroroute": {
+    "latency_ms": 24531,
+    "tokens": 1467,
+    "cost_usd": 0.00088,
+    "quality": 0.5,
+    "strategy": "vision_grounded",
+    "initial_strategy": "vision_grounded",
+    "expected_strategy": "vision_grounded",
+    "routing_correct": true,
+    "confidence": 0.902,
+    "confidence_decision": "return",
+    "evidence_coverage": 0.806,
+    "retrieval_relevance": 1.0,
+    "validation_passed": true,
+    "model_agreement": 0.85,
+    "escalated": false
+   }
+  },
+  {
+   "id": "vis_2",
+   "level": "vision",
+   "always_large": {
+    "latency_ms": 3938,
+    "tokens": 83,
+    "cost_usd": 0.000208,
+    "quality": 0.0
+   },
+   "always_medium": {
+    "latency_ms": 2074,
+    "tokens": 215,
+    "cost_usd": 0.000129,
+    "quality": 0.0
+   },
+   "neuroroute": {
+    "latency_ms": 26646,
+    "tokens": 1459,
+    "cost_usd": 0.000875,
+    "quality": 0.0,
+    "strategy": "vision_grounded",
+    "initial_strategy": "vision_grounded",
+    "expected_strategy": "vision_grounded",
+    "routing_correct": true,
+    "confidence": 0.949,
+    "confidence_decision": "return",
+    "evidence_coverage": 0.939,
+    "retrieval_relevance": 1.0,
+    "validation_passed": true,
+    "model_agreement": 0.85,
+    "escalated": false
+   }
+  },
+  {
+   "id": "vis_3",
+   "level": "vision",
+   "always_large": {
+    "latency_ms": 10877,
+    "tokens": 144,
+    "cost_usd": 0.00036,
+    "quality": 1.0
+   },
+   "always_medium": {
+    "latency_ms": 17374,
+    "tokens": 418,
+    "cost_usd": 0.000251,
+    "quality": 1.0
+   },
+   "neuroroute": {
+    "latency_ms": 34727,
+    "tokens": 1398,
+    "cost_usd": 0.001558,
+    "quality": 1.0,
+    "strategy": "verified_large",
+    "initial_strategy": "verified_large",
+    "expected_strategy": "verified_large",
+    "routing_correct": true,
+    "confidence": 0.873,
+    "confidence_decision": "return",
+    "evidence_coverage": 0.722,
+    "retrieval_relevance": 1.0,
+    "validation_passed": true,
+    "model_agreement": 0.85,
+    "escalated": false
+   }
+  }
+ ]
+}

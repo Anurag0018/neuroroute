@@ -13,3 +13,4 @@ python-multipart>=0.0.9
 # sentence-transformers>=2.2
 # qdrant-client>=1.9  # only needed for NR_VECTOR_STORE=qdrant
 # faster-whisper>=1.0 + av>=11,<13  # only for real audio transcription; av>=13 breaks faster-whisper decode
+# mcp>=1.2,<2  # only for the MCP server interface (mcp_server.py)

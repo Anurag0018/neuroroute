@@ -677,3 +677,44 @@ The deployment rows of the architecture's stack table:
   state yet — traces sit behind the ExecutionTracer class and
   uploads on the filesystem — so they are documented here as the
   production swap rather than deployed unused. 117 tests.
+
+## MCP server — the agent interface (2026-11-15)
+
+NeuroRoute now speaks two protocols over one execution core:
+
+- **REST** (FastAPI) for applications — dashboards, benchmarks,
+  scripts.
+- **MCP** (Model Context Protocol, mcp_server.py) for AI clients
+  — Claude Desktop, Cursor, other agents — which discover and
+  call NeuroRoute's capabilities as standard MCP tools over
+  stdio: `neuroroute_query` (the full routed pipeline),
+  `neuroroute_route_preview` (the authorised plan, unexecuted),
+  `neuroroute_calculator` / `neuroroute_datetime` /
+  `neuroroute_web_search` (the registered tools directly),
+  `neuroroute_metrics`, `neuroroute_health`.
+
+Both interfaces wrap the same NeuroRoutePipeline and tool
+registry, so a request entering via MCP receives the identical
+validated, budget-capped execution as one entering via HTTP —
+the interface is pluggable, the safety properties are shared.
+Verified by a protocol round-trip test: an MCP client spawns the
+server, lists its tools and calls them (calculator returns
+52,986 for 1,247 * 38 + 5,600 through the protocol).
+
+Setup: `.venv/bin/pip install "mcp>=1.2,<2"`, then register in
+the client's MCP config:
+
+```json
+{
+  "mcpServers": {
+    "neuroroute": {
+      "command": "/path/to/neuroroute/.venv/bin/python",
+      "args": ["/path/to/neuroroute/mcp_server.py"],
+      "env": {"NR_MODEL_MODE": "ollama"}
+    }
+  }
+}
+```
+
+The usual NR_* variables configure the MCP server's pipeline
+exactly as they configure the API server. 118 tests.
