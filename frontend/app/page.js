@@ -36,6 +36,58 @@ const score = (c) => c?.confidence_score ?? c?.score ?? 0;
 const fmtMs = (v) => (v == null ? '—' : `${Math.round(v)} ms`);
 const fmtCost = (v) => (v == null ? '—' : `$${Number(v).toFixed(6)}`);
 
+/* Minimal, safe markdown for model answers: headings, bold/italic,
+   inline code, ordered/unordered lists, paragraphs. Everything is
+   rendered as React text nodes — no raw HTML is ever injected, so
+   model output cannot break out of the answer panel. */
+function inlineMd(text, base) {
+  return text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g).map((part, i) => {
+    const key = `${base}-${i}`;
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4)
+      return <strong key={key}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2)
+      return <em key={key}>{part.slice(1, -1)}</em>;
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2)
+      return <code key={key}>{part.slice(1, -1)}</code>;
+    return part;
+  });
+}
+
+function renderMarkdown(text) {
+  const blocks = [];
+  let list = null;
+  const flush = () => {
+    if (!list) return;
+    const items = list.items.map((item, i) => (
+      <li key={i}>{inlineMd(item, `li${i}`)}</li>));
+    blocks.push(list.ordered
+      ? <ol key={blocks.length}>{items}</ol>
+      : <ul key={blocks.length}>{items}</ul>);
+    list = null;
+  };
+  (text || '').split('\n').forEach((raw) => {
+    const line = raw.trim();
+    const h = line.match(/^(#{1,3})\s+(.*)/);
+    const ul = line.match(/^[-*•]\s+(.*)/);
+    const ol = line.match(/^\d+[.)]\s+(.*)/);
+    if (h) {
+      flush();
+      blocks.push(<div className="md-h" key={blocks.length}>{inlineMd(h[2], 'h')}</div>);
+    } else if (ul) {
+      if (!list || list.ordered) { flush(); list = { ordered: false, items: [] }; }
+      list.items.push(ul[1]);
+    } else if (ol) {
+      if (!list || !list.ordered) { flush(); list = { ordered: true, items: [] }; }
+      list.items.push(ol[1]);
+    } else if (line) {
+      flush();
+      blocks.push(<p key={blocks.length}>{inlineMd(line, 'p')}</p>);
+    } else flush();
+  });
+  flush();
+  return blocks;
+}
+
 function Logo() {
   return (
     <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
@@ -225,7 +277,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="panel-b">
-                <p className="answer">{result.answer}</p>
+                <div className="answer">{renderMarkdown(result.answer)}</div>
                 {(result.escalation_history || []).length > 0 && (
                   <div className="esc">
                     Escalated {result.escalation_history.map((h, i) => (

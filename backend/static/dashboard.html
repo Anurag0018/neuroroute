@@ -174,6 +174,19 @@ async function upload() {
   if (res.ok) { attached = t.source; st.textContent = `Ingested ${t.source}: ${t.chunks_ingested} chunk(s). It will be attached to your queries.`; }
   else { st.textContent = 'Upload failed: ' + (t.detail || res.status); }
 }
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+/* Escape first, then apply the small markdown subset models actually
+   emit (bold, inline code, line breaks). Answer text is model output;
+   it must never reach innerHTML unescaped. */
+function fmtAnswer(text) {
+  return escHtml(text)
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
 function renderResult(t) {
   const out = document.getElementById('out');
   const pct = Math.round(t.confidence.confidence_score * 100);
@@ -183,11 +196,11 @@ function renderResult(t) {
     (dec.tokens ? ` · ${dec.tokens} tokens` : '') +
     (dec.latency_ms ? ` · ${dec.latency_ms}ms` : '');
   out.innerHTML = `
-    <div class="card"><b>Answer</b><p>${t.answer}</p></div>
+    <div class="card"><b>Answer</b><p>${fmtAnswer(t.answer)}</p></div>
     <div class="card"><b>Routing decision</b>
       <p>Strategy: <b>${t.strategy}</b> · Complexity: ${t.complexity.complexity_score} · Task: ${t.analysis.task_type} · Risk: ${t.analysis.risk_level}</p>
       <p class="muted">${decLine}</p>
-      <p class="muted">${t.rationale}</p></div>
+      <p class="muted">${escHtml(t.rationale)}</p></div>
     ${renderGraph(t)}
     ${renderWaterfall(t)}
     <div class="card"><b>Confidence: ${pct}%</b> — decision: ${t.confidence.decision}
@@ -218,7 +231,7 @@ async function loadTraces() {
     traceCache = {}; list.forEach(t => traceCache[t.request_id] = t);
     if (!list.length) { el.innerHTML = ''; return; }
     const rows = list.slice().reverse().map(t =>
-      `<tr class="tracerow" onclick="showTrace('${t.request_id}')"><td>${(t.query || '').slice(0, 60)}</td><td>${t.strategy}</td><td>${Math.round(t.confidence.confidence_score * 100)}%</td><td>${t.metrics.tokens}</td><td>${t.metrics.latency_ms}ms</td></tr>`).join('');
+      `<tr class="tracerow" onclick="showTrace('${t.request_id}')"><td>${escHtml((t.query || '').slice(0, 60))}</td><td>${t.strategy}</td><td>${Math.round(t.confidence.confidence_score * 100)}%</td><td>${t.metrics.tokens}</td><td>${t.metrics.latency_ms}ms</td></tr>`).join('');
     el.innerHTML = `<div class="card"><b>Recent traces</b><p class="muted">Click a row to reload its full result, graph and timeline.</p><table><tr><th>Query</th><th>Strategy</th><th>Confidence</th><th>Tokens</th><th>Latency</th></tr>${rows}</table></div>`;
   } catch (e) { /* the trace list is best-effort */ }
 }
