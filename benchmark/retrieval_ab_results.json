@@ -1,0 +1,144 @@
+[
+  {
+    "embedder": "hashing-1024",
+    "keyword_hits": "3/3",
+    "paraphrase_hits": "3/5",
+    "rows": [
+      {
+        "query": "how does quantization reduce model memory size and inference cost",
+        "expected": "doc_quantization",
+        "style": "keyword",
+        "top1": "doc_quantization",
+        "hit": true,
+        "expected_relevance": 0.611
+      },
+      {
+        "query": "how do vector databases support nearest neighbour search",
+        "expected": "doc_vectordb",
+        "style": "keyword",
+        "top1": "doc_vectordb",
+        "hit": true,
+        "expected_relevance": 0.682
+      },
+      {
+        "query": "supervised and unsupervised learning difference",
+        "expected": "doc_learning_types",
+        "style": "keyword",
+        "top1": "doc_learning_types",
+        "hit": true,
+        "expected_relevance": 0.65
+      },
+      {
+        "query": "how can a chatbot stop making up facts",
+        "expected": "doc_rag",
+        "style": "paraphrase",
+        "top1": "doc_vectordb",
+        "hit": false,
+        "expected_relevance": 0.0
+      },
+      {
+        "query": "making a huge neural network fit on a small laptop",
+        "expected": "doc_quantization",
+        "style": "paraphrase",
+        "top1": "doc_embeddings",
+        "hit": false,
+        "expected_relevance": 0.0
+      },
+      {
+        "query": "finding documents that mean the same thing even with different words",
+        "expected": "doc_embeddings",
+        "style": "paraphrase",
+        "top1": "doc_embeddings",
+        "hit": true,
+        "expected_relevance": 0.224
+      },
+      {
+        "query": "teaching a model new behaviour without retraining it",
+        "expected": "doc_finetuning",
+        "style": "paraphrase",
+        "top1": "doc_finetuning",
+        "hit": true,
+        "expected_relevance": 0.201
+      },
+      {
+        "query": "how are molecular properties predicted from graph structure",
+        "expected": "doc_gnn",
+        "style": "paraphrase",
+        "top1": "doc_gnn",
+        "hit": true,
+        "expected_relevance": 0.268
+      }
+    ]
+  },
+  {
+    "embedder": "sentence-transformers/all-MiniLM-L6-v2",
+    "keyword_hits": "3/3",
+    "paraphrase_hits": "4/5",
+    "rows": [
+      {
+        "query": "how does quantization reduce model memory size and inference cost",
+        "expected": "doc_quantization",
+        "style": "keyword",
+        "top1": "doc_quantization",
+        "hit": true,
+        "expected_relevance": 0.876
+      },
+      {
+        "query": "how do vector databases support nearest neighbour search",
+        "expected": "doc_vectordb",
+        "style": "keyword",
+        "top1": "doc_vectordb",
+        "hit": true,
+        "expected_relevance": 0.726
+      },
+      {
+        "query": "supervised and unsupervised learning difference",
+        "expected": "doc_learning_types",
+        "style": "keyword",
+        "top1": "doc_learning_types",
+        "hit": true,
+        "expected_relevance": 0.697
+      },
+      {
+        "query": "how can a chatbot stop making up facts",
+        "expected": "doc_rag",
+        "style": "paraphrase",
+        "top1": "doc_embeddings",
+        "hit": false,
+        "expected_relevance": 0.152
+      },
+      {
+        "query": "making a huge neural network fit on a small laptop",
+        "expected": "doc_quantization",
+        "style": "paraphrase",
+        "top1": "doc_quantization",
+        "hit": true,
+        "expected_relevance": 0.208
+      },
+      {
+        "query": "finding documents that mean the same thing even with different words",
+        "expected": "doc_embeddings",
+        "style": "paraphrase",
+        "top1": "doc_embeddings",
+        "hit": true,
+        "expected_relevance": 0.503
+      },
+      {
+        "query": "teaching a model new behaviour without retraining it",
+        "expected": "doc_finetuning",
+        "style": "paraphrase",
+        "top1": "doc_finetuning",
+        "hit": true,
+        "expected_relevance": 0.343
+      },
+      {
+        "query": "how are molecular properties predicted from graph structure",
+        "expected": "doc_gnn",
+        "style": "paraphrase",
+        "top1": "doc_gnn",
+        "hit": true,
+        "expected_relevance": 0.674
+      }
+    ]
+  }
+]

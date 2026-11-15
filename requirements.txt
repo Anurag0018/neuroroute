@@ -7,3 +7,7 @@ httpx>=0.27
 eval_type_backport>=0.2; python_version < "3.10"
 pymupdf>=1.24
 python-multipart>=0.0.9
+# Optional: semantic embeddings. When installed, all-MiniLM-L6-v2 is
+# used automatically (override with NR_EMBEDDINGS=hash). Heavy
+# (pulls in torch) — the default hashing embedder needs nothing.
+# sentence-transformers>=2.2
