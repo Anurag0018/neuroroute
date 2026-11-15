@@ -1,0 +1,42 @@
+{
+ "note": "Tool-engine benchmark (real Ollama run on the developer's Mac, 2026-11-15; rules router, modes pinned inline). 4 deterministic tool queries (2 calculator, 2 datetime). Full per-row data lives in the run's local output file.",
+ "summary": {
+  "queries": 4,
+  "routing_accuracy": "4/4",
+  "avg_latency_ms": {
+   "always_large": 8696.25,
+   "always_medium": 1341.25,
+   "neuroroute": 464.0
+  },
+  "avg_tokens": {
+   "always_large": 254.25,
+   "always_medium": 135.5,
+   "neuroroute": 123.5
+  },
+  "avg_quality": {
+   "always_large": 0.5,
+   "always_medium": 0.25,
+   "neuroroute": 1.0
+  },
+  "avg_cost_usd": {
+   "always_large": 0.000636,
+   "always_medium": 8.2e-05,
+   "neuroroute": 3.9e-05
+  },
+  "quality_per_dollar": {
+   "always_large": 786.2,
+   "always_medium": 3048.8,
+   "neuroroute": 25641.0
+  },
+  "neuroroute_savings_vs_always_large": {
+   "latency_pct": 94.7,
+   "tokens_pct": 51.4,
+   "cost_pct": 93.9
+  },
+  "neuroroute_savings_vs_always_medium": {
+   "latency_pct": 65.4,
+   "tokens_pct": 8.9,
+   "cost_pct": 52.4
+  }
+ }
+}

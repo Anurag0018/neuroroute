@@ -506,3 +506,20 @@ proposes, the backend authorises — never arbitrary tool execution.
   queries) routes 4/4 in mock mode; base and multipart routing
   unchanged (24/24, 6/6 — detection has no false positives on
   either set). 89 tests total.
+
+Measured (real Ollama run, rules router, 2026-11-15;
+benchmark/results-tools.json):
+
+| System | Latency | Tokens | $/query | Quality | Quality/$ |
+|---|---|---|---|---|---|
+| always-large | 8,696ms | 254 | 0.000636 | 0.50 | 786 |
+| always-medium | 1,341ms | 136 | 0.000082 | 0.25 | 3,049 |
+| NeuroRoute (tool) | 464ms | 124 | 0.000039 | 1.00 | 25,641 |
+
+On the task class where LLMs are structurally unreliable —
+exact arithmetic and date math — the large model scored 0.50
+and the medium 0.25 doing it mentally, while the tool path was
+perfect, 94.7% faster and 93.9% cheaper than always-large
+(quality-per-dollar 25,641 vs 786, a 33x gap). This is the
+architecture document's core claim in miniature: choose the
+right computational pathway, don't just buy a bigger model.
