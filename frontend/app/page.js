@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const KIND_COLORS = {
   retrieve: '#2dd4bf', generate: '#5b6cff', verify: '#43d17c',
   planning: '#e0a458', tool: '#e879c6', perceive: '#c084fc',
+  transcribe: '#f87171',
 };
 
 async function api(path, options) {
@@ -107,7 +108,7 @@ export default function Home() {
           <button onClick={run} disabled={busy}>{busy ? 'Running…' : 'Run'}</button>
           <button className="ghost" onClick={() => fileRef.current?.click()}>Upload</button>
           <input ref={fileRef} type="file" hidden
-            accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,.gif" onChange={upload} />
+            accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.m4a,.ogg,.flac,.webm" onChange={upload} />
         </div>
         {attachments.length > 0 && (
           <div className="chips">

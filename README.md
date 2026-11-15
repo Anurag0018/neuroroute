@@ -603,3 +603,43 @@ model/tool/vision orchestration, evidence-based confidence with
 calibrated thresholds, a priced budget system, HoneyHive-style
 observability, and benchmarked quality-per-unit-cost against
 always-large and always-medium baselines. 103 tests.
+
+## Audio path — multimodal engine complete (2026-11-15)
+
+The last capability named in the architecture (section E: "Audio
+model — speech recognition"; section 1: Text / PDF / Image /
+Audio) is implemented exactly like the vision path:
+
+- **New node kind `transcribe`**: turns an audio attachment into
+  evidence text (the transcript) that a generate node grounds on.
+  Validator rules mirror `perceive`: no model tier, must name its
+  attachment.
+- **Routing**: audio attachments route to the new
+  `audio_grounded` strategy (transcribe -> medium generate),
+  escalating to verified_large — whose template keeps the
+  transcribe node, the same evidence-preservation rule as images.
+  High-risk audio queries go straight to verified_large with the
+  transcript included. The DAG planner bypasses audio requests to
+  the template, as with images.
+- **Transcriber**: faster-whisper running locally (optional
+  package; NR_WHISPER_MODEL, default "tiny", int8 CPU), selected
+  automatically when installed (NR_AUDIO_MODE=whisper|mock|auto).
+  Without it, a labelled mock placeholder — no speech content is
+  invented. Missing file / no speech / decode failure = the node
+  fails with no evidence. Note the version pin in
+  requirements.txt: av>=13 breaks faster-whisper's audio decode
+  (found by the round-trip test below).
+- **Verified end-to-end with real speech**: benchmark/assets/
+  voice_note.wav is synthesized speech (ffmpeg flite) saying
+  "NeuroRoute routes each request to the cheapest reliable path";
+  the tiny model transcribed it in ~4s as "Narrowed Roots each
+  request to the cheapest reliable path" — content words intact,
+  proper noun misheard, which is exactly the tiny model's known
+  accuracy class. A round-trip test asserts on it.
+- Uploads accept audio files in both dashboards; transcribe
+  nodes render red in the execution graph. Benchmark:
+  benchmark/queries_audio.json routes 3/3 in mock mode. 112 tests.
+
+With this, every row of the architecture's execution table —
+small/medium/large LLMs, embeddings, vector DB, vision, OCR,
+audio, tools, verification — is implemented and tested.

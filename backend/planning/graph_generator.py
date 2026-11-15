@@ -11,11 +11,19 @@ from backend.schemas import (Budget, ComplexityEstimate, ExecutionPlan,
 _TIER_TOKENS = {"small": 300, "medium": 900, "large": 1800, "verifier": 500}
 
 _IMG_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
+_AUD_EXT = (".mp3", ".wav", ".m4a", ".ogg", ".flac", ".webm")
 
 
 def _image_attachment(analysis: InputAnalysis) -> str:
     for a in analysis.attachments:
         if a.lower().endswith(_IMG_EXT):
+            return a
+    return analysis.attachments[0] if analysis.attachments else ""
+
+
+def _audio_attachment(analysis: InputAnalysis) -> str:
+    for a in analysis.attachments:
+        if a.lower().endswith(_AUD_EXT):
             return a
     return analysis.attachments[0] if analysis.attachments else ""
 
@@ -81,8 +89,24 @@ def build_plan(strategy: str, analysis: InputAnalysis,
                      "(description + text transcription) and a medium "
                      "model answers grounded in that perception.")
 
+    elif strategy == "audio_grounded":
+        aud = _audio_attachment(analysis)
+        nodes = [PlanNode("transcribe", "transcribe", None, [],
+                          {"attachment": aud}),
+                 PlanNode("generate", "generate", "medium", ["transcribe"])]
+        rationale = ("Audio input: speech is transcribed locally and a "
+                     "medium model answers grounded in the transcript.")
+
     elif strategy == "verified_large":
-        if analysis.modality == "image":
+        if analysis.modality == "audio":
+            # Same rule as images: the verified path keeps the
+            # preprocessing node that produced its evidence.
+            aud = _audio_attachment(analysis)
+            nodes = [PlanNode("transcribe", "transcribe", None, [],
+                              {"attachment": aud}),
+                     PlanNode("generate", "generate", "large", ["transcribe"]),
+                     PlanNode("verify", "verify", "verifier", ["generate"])]
+        elif analysis.modality == "image":
             # Verified path for an image keeps the perceive node —
             # escalating away from the image evidence would defeat
             # the verification.

@@ -60,6 +60,7 @@ def health():
             "embeddings": retrieval.embedder.name,
             "vector_store": retrieval.store.name,
             "vision_model": os.environ.get("NR_VISION_MODEL", "llava:7b"),
+            "whisper_model": os.environ.get("NR_WHISPER_MODEL", "tiny"),
             "prices_per_1k_usd": rate_card(),
             "documents": retrieval.documents()}
 
@@ -97,6 +98,11 @@ async def upload_document(file: UploadFile = File(...)):
         # Images are not text-indexed: they are perceived per query
         # by the multimodal engine when named in `attachments`.
         return {"source": dest.name, "kind": "image",
+                "chunks_ingested": 0, "documents": retrieval.documents()}
+    if dest.suffix.lower() in (".mp3", ".wav", ".m4a", ".ogg",
+                               ".flac", ".webm"):
+        # Audio is transcribed per query, not text-indexed.
+        return {"source": dest.name, "kind": "audio",
                 "chunks_ingested": 0, "documents": retrieval.documents()}
     try:
         chunks = retrieval.ingest_file(dest)

@@ -33,6 +33,8 @@ def choose_strategy(analysis: InputAnalysis,
     # verified_large), which keeps the perceive node in the plan.
     if analysis.modality == "image":
         return "vision_grounded"
+    if analysis.modality == "audio":
+        return "audio_grounded"
     if complexity.complexity_score >= PATH_C_MIN_COMPLEXITY:
         return "verified_large"
     # Tool engine: a request a registered tool can settle exactly
@@ -60,7 +62,8 @@ ESCALATION_LADDER = ["direct_small", "rag_medium", "verified_large"]
 # tool_assisted, a peer of direct_small whose evidence is a tool
 # result rather than the model's own knowledge).
 ALL_STRATEGIES = ["direct_small", "rag_medium", "decomposed_research",
-                  "verified_large", "tool_assisted", "vision_grounded"]
+                  "verified_large", "tool_assisted", "vision_grounded",
+                  "audio_grounded"]
 
 # Escalation moves to a strictly stronger path. decomposed_research
 # escalates to verified_large (a failed synthesis needs verification,
@@ -71,7 +74,8 @@ _ESCALATION_NEXT = {"direct_small": "rag_medium",
                     "rag_medium": "verified_large",
                     "decomposed_research": "verified_large",
                     "tool_assisted": "rag_medium",
-                    "vision_grounded": "verified_large"}
+                    "vision_grounded": "verified_large",
+                    "audio_grounded": "verified_large"}
 
 
 def next_strategy(strategy: str) -> str | None:

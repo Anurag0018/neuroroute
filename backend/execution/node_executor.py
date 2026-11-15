@@ -5,6 +5,8 @@ import time
 
 from backend.execution.perception import PerceptionError, VisionPerceiver
 from backend.execution.tools import ToolError, run_tool
+from backend.execution.transcription import (AudioTranscriber,
+                                             TranscriptionError)
 from backend.models.llm_adapter import default_adapter
 from backend.models.model_registry import NODE_COST_USD, NODE_LATENCY_MS
 from backend.retrieval.retrieval_service import RetrievalService
@@ -18,6 +20,7 @@ class NodeExecutor:
         self.adapter = adapter or default_adapter()
         self.retrieval = retrieval or RetrievalService()
         self.perceiver = VisionPerceiver()
+        self.transcriber = AudioTranscriber()
 
     def execute(self, node: PlanNode, query: str,
                 prior: dict[str, NodeResult],
@@ -77,6 +80,25 @@ class NodeExecutor:
                 return NodeResult(node.node_id, node.kind, status="failed",
                                   output=[])
 
+        if node.kind == "transcribe":
+            # Audio preprocessing, mirroring perceive: speech becomes
+            # evidence text the generate node grounds on.
+            attachment = node.params.get("attachment", "")
+            try:
+                gen = self.transcriber.transcribe(attachment)
+                docs_out = [{"id": f"audio:{attachment}",
+                             "title": f"Audio transcript ({attachment})",
+                             "text": gen.text,
+                             "source": f"audio:{attachment}",
+                             "relevance": 1.0}]
+                return NodeResult(node.node_id, node.kind,
+                                  latency_ms=gen.latency_ms,
+                                  tokens=gen.tokens, cost_usd=gen.cost_usd,
+                                  output=docs_out)
+            except TranscriptionError:
+                return NodeResult(node.node_id, node.kind, status="failed",
+                                  output=[])
+
         docs = _docs_for(node, prior)
 
         if node.kind == "generate":
@@ -118,7 +140,7 @@ class NodeExecutor:
 
 def _docs_from(prior: dict[str, NodeResult]) -> list[dict]:
     for r in prior.values():
-        if r.kind in ("retrieve", "tool", "perceive") \
+        if r.kind in ("retrieve", "tool", "perceive", "transcribe") \
                 and isinstance(r.output, list):
             return r.output
     return []
@@ -130,7 +152,7 @@ def _docs_for(node: PlanNode, prior: dict[str, NodeResult]) -> list[dict]:
     fall back to any retrieval in the graph (Phase 1/2 templates)."""
     for dep in node.depends_on:
         r = prior.get(dep)
-        if r is not None and r.kind in ("retrieve", "tool", "perceive") \
+        if r is not None and r.kind in ("retrieve", "tool", "perceive", "transcribe") \
                 and isinstance(r.output, list):
             return r.output
     return _docs_from(prior)
