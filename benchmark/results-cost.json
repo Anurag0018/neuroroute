@@ -1,0 +1,42 @@
+{
+ "note": "Phase 5 costed run (Ollama, 2026-11-15). Configuration: LLM decision model active (NR_DECISION_MODEL=llm still exported in the benchmark terminal - detected from the easy-row token fingerprint, 573-759 tok vs the ~212 max for a rules-mode small call), so NeuroRoute's figures include per-query decision overhead. Costs are modelled at the registry rate card. Full per-row data lives in the run's local output file.",
+ "summary": {
+  "queries": 24,
+  "routing_accuracy": "24/24",
+  "avg_latency_ms": {
+   "always_large": 42525.0,
+   "always_medium": 2201.83,
+   "neuroroute": 9804.5
+  },
+  "avg_tokens": {
+   "always_large": 544.12,
+   "always_medium": 196.92,
+   "neuroroute": 891.42
+  },
+  "avg_quality": {
+   "always_large": 0.98,
+   "always_medium": 0.69,
+   "neuroroute": 0.95
+  },
+  "avg_cost_usd": {
+   "always_large": 0.00136,
+   "always_medium": 0.000118,
+   "neuroroute": 0.000528
+  },
+  "quality_per_dollar": {
+   "always_large": 720.6,
+   "always_medium": 5847.5,
+   "neuroroute": 1799.2
+  },
+  "neuroroute_savings_vs_always_large": {
+   "latency_pct": 76.9,
+   "tokens_pct": -63.8,
+   "cost_pct": 61.2
+  },
+  "neuroroute_savings_vs_always_medium": {
+   "latency_pct": -345.3,
+   "tokens_pct": -352.7,
+   "cost_pct": -347.5
+  }
+ }
+}

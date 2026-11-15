@@ -437,16 +437,35 @@ on real numbers):
   when a cap is hit. Estimated and actual cost are tracked as
   separate fields end to end.
 
-The benchmark now reports avg_cost_usd per system and the
-project's goal metric, quality per dollar. From the tuned run's
-recorded token averages, the baselines price out exactly:
-always-large 520 tokens/query at the large rate = $0.00130 per
-query ($1.30 per 1,000 queries, quality-per-dollar ~769);
-always-medium 183 tokens at the medium rate = $0.00011 per query
-(~8,016 quality per dollar at quality 0.88 — cheap, but it buys
-the lower quality). NeuroRoute's exact figure needs the costed
-re-run (its 440-token average mixes tiers; priced entirely at the
-large rate it is bounded at $0.00110 per query):
+Costed run (2026-11-15, Ollama, 24 queries, routing 24/24;
+benchmark/results-cost.json):
 
-  NR_MODEL_MODE=ollama python -m benchmark.run_benchmark \
+| System | Tokens/query | $/query | $/1,000 queries | Quality | Quality/$ |
+|---|---|---|---|---|---|
+| always-large | 544 | 0.00136 | 1.36 | 0.98 | 721 |
+| always-medium | 197 | 0.000118 | 0.12 | 0.69 | 5,848 |
+| NeuroRoute | 891 | 0.000528 | 0.53 | 0.95 | 1,799 |
+
+Findings:
+- Tokens are not dollars. In this run NeuroRoute used 64% MORE
+  tokens than always-large yet cost 61% LESS ($0.000528 vs
+  $0.00136 per query), because its tokens sit mostly in the
+  small/medium tiers while always-large pays the large rate for
+  every token. Tier mix, not token count, drives cost - the
+  reason the project tracks both.
+- Quality per dollar: NeuroRoute 1,799 vs always-large 721
+  (2.5x). Always-medium posts the highest raw figure (5,848)
+  because the proxy rewards its cheap partial answers; it cannot
+  reach the 0.95 quality tier at any budget in this setup.
+- Configuration note: this run executed with the LLM decision
+  model active (NR_DECISION_MODEL=llm was still exported in the
+  benchmark terminal - detected from the easy-row token
+  fingerprint: 573-759 tokens vs the ~212 maximum for a
+  rules-mode small-tier call, and confirmed by the 891-token
+  average matching the Phase 2 A/B signature). The rules
+  configuration (440 tokens/query in the tuned run, identical
+  strategies) will price lower; its exact figure awaits a pinned
+  re-run:
+    NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules \
+      python -m benchmark.run_benchmark \
       --output benchmark/results-cost.json
