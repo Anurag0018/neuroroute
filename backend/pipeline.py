@@ -14,7 +14,7 @@ from dataclasses import asdict
 from backend.execution.graph_executor import GraphExecutor
 from backend.execution.node_executor import _answer_from, _docs_from
 from backend.intelligence import complexity_estimator, input_analyzer
-from backend.intelligence.decision_model import RuleBasedDecisionModel
+from backend.intelligence.decision_model import default_decision_model
 from backend.planning.graph_generator import build_plan
 from backend.planning.graph_validator import PlanRejected, validate_plan
 from backend.schemas import Budget, BudgetUsage, PlanNode
@@ -24,8 +24,11 @@ from backend.validation.escalation_controller import escalation_target
 
 
 class NeuroRoutePipeline:
-    def __init__(self, tracer: ExecutionTracer | None = None):
-        self.decision_model = RuleBasedDecisionModel()
+    def __init__(self, tracer: ExecutionTracer | None = None,
+                 decision_model=None):
+        # Default honours NR_DECISION_MODEL (rules | llm); tests and the
+        # API may inject a specific model.
+        self.decision_model = decision_model or default_decision_model()
         self.executor = GraphExecutor()
         self.tracer = tracer or ExecutionTracer()
 
@@ -39,6 +42,19 @@ class NeuroRoutePipeline:
             self.decision_model.propose_plan(analysis, complexity, budget), budget)
 
         usage = BudgetUsage()
+        # Charge the decision step itself: an LLM router's tokens and
+        # latency are part of NeuroRoute's cost (zero for rule-based).
+        decision_usage = getattr(self.decision_model, "last_usage", None)
+        if decision_usage is not None:
+            usage.add(tokens=decision_usage.tokens,
+                      cost_usd=decision_usage.cost_usd,
+                      latency_ms=decision_usage.latency_ms, model_calls=1)
+        decision_info = {
+            "source": getattr(self.decision_model, "last_source", "rules"),
+            "tier": getattr(self.decision_model, "tier", None),
+            "tokens": decision_usage.tokens if decision_usage else 0,
+            "latency_ms": decision_usage.latency_ms if decision_usage else 0,
+        }
         escalation_history: list[dict] = []
         answer, confidence, node_results, verified_adhoc = "", None, {}, False
 
@@ -100,6 +116,7 @@ class NeuroRoutePipeline:
             "complexity": asdict(complexity),
             "strategy": plan.strategy,
             "rationale": plan.rationale,
+            "decision": decision_info,
             "execution_graph": [
                 {"node_id": n.node_id, "kind": n.kind, "model_tier": n.model_tier,
                  "depends_on": n.depends_on,

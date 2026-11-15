@@ -185,19 +185,36 @@ Tests: 27 passing (4 new in tests/test_tuning.py). Re-run
 `python -m benchmark.run_benchmark` with NR_MODEL_MODE=ollama to
 refresh the results table with tuned numbers.
 
-## Results (full benchmark, 24 queries, tuned v1.1, local Ollama models)
+## Phase 2 — LLM decision model (2026-11-14)
 
-| System | Avg latency | Avg tokens | Quality |
-|---|---|---|---|
-| Always-large | 26,826 ms | 520 | 1.00 |
-| Always-medium + RAG | 2,682 ms | 183 | 0.88 |
-| **NeuroRoute** | **10,022 ms** | **440** | **0.97** |
+The router itself can now be a model. `LLMDecisionModel`
+(backend/intelligence/decision_model.py) asks a lightweight LLM —
+the small tier by default (NR_DECISION_TIER to change) — to choose a
+strategy as structured JSON. It never builds or executes anything
+itself: the plan is still constructed deterministically by
+build_plan() and must pass the graph validator.
 
-Routing accuracy 24/24. NeuroRoute: -62.6% latency and -15.5% tokens vs
-the always-large pipeline at comparable answer quality (0.97 vs 1.00).
-Always-medium is cheaper but lowest quality; NeuroRoute spends its
-budget only where quality needs it. Quality is a keyword-coverage
-proxy over fixed expected answers. An earlier untuned run measured
-13,107 ms / 542 tokens for NeuroRoute (-59.0% / -6.4% vs large);
-tuning v1.1 (see above) improved both without changing any routing
-decision.
+Safety rails, in order:
+1. Guardrails outrank the model: high-risk or document inputs are
+   forced to verified_large whatever the model proposes.
+2. The model may only pick one of the three registered strategies.
+3. Non-JSON output, an unknown strategy, or an unreachable model
+   falls back to the rule-based router — routing can never take the
+   system down.
+4. The decision call is not free: its tokens/latency are charged to
+   the request totals and recorded in every trace ("decision" field:
+   source llm | llm_guardrail_override | llm_fallback_rules | rules).
+
+Enable it (default stays "rules" for reproducible benchmarks):
+
+    export NR_DECISION_MODEL=llm
+    export NR_MODEL_MODE=ollama         # counterpart; needs real models
+
+Router A/B experiment: run the benchmark once per mode and compare
+routing accuracy and the overhead the LLM router adds:
+
+    NR_DECISION_MODEL=rules python -m benchmark.run_benchmark
+    NR_DECISION_MODEL=llm   python -m benchmark.run_benchmark
+
+Tests: 35 passing (8 new in tests/test_decision_model.py, all with
+stub adapters — no real model needed).

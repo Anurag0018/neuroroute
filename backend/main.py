@@ -49,8 +49,9 @@ def _budget(b: Optional[BudgetIn]) -> Budget:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "neuroroute", "phase": 1,
-            "model_mode": os.environ.get("NR_MODEL_MODE", "mock")}
+    return {"status": "ok", "service": "neuroroute", "phase": 2,
+            "model_mode": os.environ.get("NR_MODEL_MODE", "mock"),
+            "decision_model": os.environ.get("NR_DECISION_MODEL", "rules")}
 
 
 @app.get("/models")
