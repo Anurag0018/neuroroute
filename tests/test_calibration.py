@@ -51,3 +51,21 @@ def test_recommend_keeps_current_when_clean():
 def test_recommend_none_when_band_dirty_everywhere():
     rows = _rows((0.99, 0.3), (0.90, 1.0))  # a bad answer at the top
     assert calibrate.recommend(rows) is None
+
+
+def test_band_components_decompose_bands():
+    rows = [
+        {"confidence": 0.95, "quality": 1.0, "evidence_coverage": 0.9,
+         "retrieval_relevance": 0.8, "model_agreement": 0.85,
+         "validation_passed": True},
+        {"confidence": 0.10, "quality": 1.0, "evidence_coverage": 0.1,
+         "retrieval_relevance": 0.2, "model_agreement": 0.30,
+         "validation_passed": False},
+        {"confidence": 0.92, "quality": 1.0},  # no components: skipped
+    ]
+    comps = calibrate.band_components(rows, 0.85, 0.60)
+    assert comps["return"]["evidence_coverage"] == 0.9
+    assert comps["return"]["validation_rate"] == 1.0
+    assert comps["escalate"]["evidence_coverage"] == 0.1
+    assert comps["escalate"]["validation_rate"] == 0.0
+    assert comps["verify"] is None

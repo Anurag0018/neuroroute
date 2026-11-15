@@ -46,6 +46,33 @@ def band_stats(rows: list[dict], return_t: float,
             for name, qs in bands.items()}
 
 
+def band_components(rows: list[dict], return_t: float,
+                    escalate_t: float) -> dict:
+    """Mean confidence components per band — decomposes WHY a band
+    scores low (weak evidence? low relevance? failed validation?)
+    instead of treating the score as a black box. Rows without
+    component fields are skipped."""
+    keys = ("evidence_coverage", "retrieval_relevance", "model_agreement")
+    bands = {"return": [], "verify": [], "escalate": []}
+    for r in rows:
+        if "evidence_coverage" not in r:
+            continue
+        c = r["confidence"]
+        band = ("return" if c >= return_t
+                else "verify" if c >= escalate_t else "escalate")
+        bands[band].append(r)
+    out = {}
+    for name, rs in bands.items():
+        if not rs:
+            out[name] = None
+            continue
+        entry = {k: round(sum(r[k] for r in rs) / len(rs), 3) for k in keys}
+        entry["validation_rate"] = round(
+            sum(1 for r in rs if r["validation_passed"]) / len(rs), 2)
+        out[name] = entry
+    return out
+
+
 def recommend(rows: list[dict]) -> float | None:
     """Lowest return threshold whose returned band stays clean
     (mean quality >= 0.95, no row < 0.50), or None if no candidate
@@ -75,6 +102,15 @@ def main() -> int:
     for name, s in cur.items():
         print(f"  {name:<9} n={s['n']:<3} mean quality={s['mean_quality']} "
               f"min={s['min_quality']}")
+    comps = band_components(rows, CURRENT_RETURN, CURRENT_ESCALATE)
+    if any(comps.values()):
+        print("\nMean confidence components per band:")
+        for name, c in comps.items():
+            if c:
+                print(f"  {name:<9} evidence={c['evidence_coverage']} "
+                      f"relevance={c['retrieval_relevance']} "
+                      f"agreement={c['model_agreement']} "
+                      f"validation_rate={c['validation_rate']}")
     print("\nReturn-threshold sweep (escalate threshold fixed at "
           f"{CURRENT_ESCALATE}):")
     for cand in RETURN_CANDIDATES:

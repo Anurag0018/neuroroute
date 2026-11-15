@@ -365,11 +365,17 @@ Findings:
   confounded by strategy: the escalate band is mostly
   verified_large rows. Hard queries averaged quality 0.958 at mean
   confidence 0.401; hard_1 produced a perfect answer scored 0.095.
-- Root cause: the confidence formula consumes raw retrieval
-  cosine, whose scale is embedder-dependent. MiniLM relevance runs
-  lower than hashing relevance on this corpus, so switching
-  embedders silently dragged hard-path confidence down. The
-  estimator did not get worse; its ruler changed units.
+- Why: confidence measures evidence-groundedness against the
+  10-document seed corpus; the quality proxy measures keyword
+  presence in the answer regardless of grounding. Hard queries
+  are largely unanswerable from that corpus, so groundedness is
+  low even when the large model's parametric answer scores
+  perfectly. The two metrics measure different things, and on
+  this benchmark the proxy cannot validate the confidence scale
+  for the hard path. (An earlier draft of this section blamed
+  embedder relevance scaling; the embeddings A/B data contradicts
+  that - MiniLM relevance scored HIGHER than hashing on every
+  shared probe - so that explanation was withdrawn.)
 - One genuinely over-confident row: med_2 (confidence 0.879,
   quality 0.667).
 - The sweep's mechanical recommendation (loosen return to 0.70)
@@ -377,9 +383,13 @@ Findings:
   instead of fixing it. Thresholds stay 0.85 / 0.60 and are now
   env-overridable (NR_RETURN_THRESHOLD / NR_ESCALATE_THRESHOLD)
   so a future, cleaner calibration can be applied without a code
-  change. Recorded next fix: normalise the relevance term per
-  embedder before it enters the confidence formula, and log
-  pre-escalation confidence for an uncontaminated calibration set.
+  change. Recorded next steps: log the confidence components
+  (evidence coverage, retrieval relevance, validation, agreement)
+  per benchmark row - now done in the runner - so the next
+  calibration can decompose the score instead of guessing at it;
+  evaluate hard-path confidence against a corpus that actually
+  covers the hard queries; and log pre-escalation confidence for
+  an uncontaminated calibration set.
 - Run configuration note: this run executed with the LLM decision
   model active (NR_DECISION_MODEL=llm was still exported in the
   benchmark terminal — found via the run's uniform ~+450

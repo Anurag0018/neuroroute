@@ -77,8 +77,14 @@ async def run_neuroroute(pipeline, item) -> dict:
             "routing_correct": initial == item["expected_strategy"],
             # Final confidence + whether the run escalated — the raw
             # material for threshold calibration (calibrate.py).
+            # The components are recorded too, so a calibration can
+            # decompose the score instead of guessing at it.
             "confidence": result["confidence"]["confidence_score"],
             "confidence_decision": result["confidence"]["decision"],
+            "evidence_coverage": result["confidence"]["evidence_coverage"],
+            "retrieval_relevance": result["confidence"]["retrieval_relevance"],
+            "validation_passed": result["confidence"]["validation_passed"],
+            "model_agreement": result["confidence"]["model_agreement"],
             "escalated": bool(history)}
 
 
