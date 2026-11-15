@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>NeuroRoute — Live Execution Dashboard (Phase 1)</title>
+<title>NeuroRoute — Live Execution Dashboard</title>
 <style>
   body { font-family: system-ui, sans-serif; background:#0f1220; color:#e8eaf2; margin:0; padding:24px; }
   h1 { font-size:22px; } .sub { color:#9aa3c0; margin-bottom:20px; }
@@ -27,6 +27,59 @@
 </span>
 <div id="out"></div>
 <script>
+function levelMap(nodes) {
+  const byId = {}; nodes.forEach(n => byId[n.node_id] = n);
+  const level = {};
+  function lev(n) {
+    if (level[n.node_id] !== undefined) return level[n.node_id];
+    const deps = (n.depends_on || []).filter(d => byId[d]);
+    level[n.node_id] = deps.length ? 1 + Math.max(...deps.map(d => lev(byId[d]))) : 0;
+    return level[n.node_id];
+  }
+  nodes.forEach(lev);
+  return level;
+}
+
+function renderGraph(t) {
+  const nodes = t.execution_graph;
+  if (!nodes.length) return '<div class="card"><b>Execution graph</b><p class="muted">No nodes.</p></div>';
+  const level = levelMap(nodes);
+  const cols = {};
+  nodes.forEach(n => { const L = level[n.node_id]; (cols[L] = cols[L] || []).push(n); });
+  const nLevels = Object.keys(cols).length;
+  const maxRows = Math.max(...Object.values(cols).map(c => c.length));
+  const W = 176, H = 56, GX = 54, GY = 16, PAD = 12;
+  const width = PAD * 2 + nLevels * W + (nLevels - 1) * GX;
+  const height = PAD * 2 + maxRows * H + (maxRows - 1) * GY;
+  const pos = {};
+  Object.entries(cols).forEach(([L, col]) => {
+    const colH = col.length * H + (col.length - 1) * GY;
+    col.forEach((n, i) => { pos[n.node_id] = {x: PAD + Number(L) * (W + GX), y: (height - colH) / 2 + i * (H + GY)}; });
+  });
+  const colors = {retrieve: '#2dd4bf', generate: '#5b6cff', verify: '#43d17c'};
+  let edges = '', boxes = '';
+  nodes.forEach(n => {
+    (n.depends_on || []).forEach(d => {
+      if (!pos[d]) return;
+      const a = pos[d], b = pos[n.node_id];
+      const x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2, mx = (x1 + x2) / 2;
+      edges += `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" fill="none" stroke="#3a4270" stroke-width="1.6" marker-end="url(#arr)"/>`;
+    });
+  });
+  nodes.forEach(n => {
+    const p = pos[n.node_id], c = colors[n.kind] || '#888';
+    const sub = `${n.kind}${n.model_tier ? ' · ' + n.model_tier : ''} · ${n.status} · ${n.latency_ms}ms`;
+    boxes += `<g><rect x="${p.x}" y="${p.y}" width="${W}" height="${H}" rx="10" fill="#1d2242" stroke="${c}" stroke-width="1.6"/>` +
+      `<text x="${p.x + 12}" y="${p.y + 23}" fill="#e8eaf2" font-size="13" font-weight="700">${n.node_id}</text>` +
+      `<text x="${p.x + 12}" y="${p.y + 41}" fill="#9aa3c0" font-size="11">${sub}</text></g>`;
+  });
+  const esc = t.escalation_history && t.escalation_history.length
+    ? `<p class="muted">Escalated: ${t.escalation_history.map(e => e.from + ' → ' + e.to).join(', ')} — showing the final plan.</p>` : '';
+  return `<div class="card"><b>Execution graph</b>${esc}<div style="overflow-x:auto"><svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
+    `<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="none" stroke="#3a4270" stroke-width="1.4"/></marker></defs>` +
+    edges + boxes + `</svg></div></div>`;
+}
+
 let attached = null;
 async function upload() {
   const f = document.getElementById('doc').files[0];
@@ -45,15 +98,19 @@ async function run() {
   const res = await fetch('/query', {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({query: document.getElementById('q').value, attachments: attached ? [attached] : []})});
   const t = await res.json();
-  const nodes = t.execution_graph.map(n =>
-    `<span class="chip"><b>${n.node_id}</b> ${n.kind}${n.model_tier ? ' · ' + n.model_tier : ''} · ${n.status} · ${n.latency_ms}ms</span>`).join(' → ');
   const pct = Math.round(t.confidence.confidence_score * 100);
+  const dec = t.decision || {};
+  const decLine = `Decision source: <b>${dec.source || 'rules'}</b>` +
+    (dec.tier ? ` · planner tier ${dec.tier}` : '') +
+    (dec.tokens ? ` · ${dec.tokens} tokens` : '') +
+    (dec.latency_ms ? ` · ${dec.latency_ms}ms` : '');
   out.innerHTML = `
     <div class="card"><b>Answer</b><p>${t.answer}</p></div>
     <div class="card"><b>Routing decision</b>
       <p>Strategy: <b>${t.strategy}</b> · Complexity: ${t.complexity.complexity_score} · Task: ${t.analysis.task_type} · Risk: ${t.analysis.risk_level}</p>
+      <p class="muted">${decLine}</p>
       <p class="muted">${t.rationale}</p></div>
-    <div class="card"><b>Execution graph</b><p>${nodes}</p></div>
+    ${renderGraph(t)}
     <div class="card"><b>Confidence: ${pct}%</b> — decision: ${t.confidence.decision}
       <div class="bar"><div style="width:${pct}%"></div></div>
       <p class="muted">Evidence coverage ${t.confidence.evidence_coverage} · Retrieval relevance ${t.confidence.retrieval_relevance} · Validation ${t.confidence.validation_passed ? 'passed' : 'failed'}</p></div>

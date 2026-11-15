@@ -124,7 +124,13 @@ class NeuroRoutePipeline:
                  "latency_ms": node_results[n.node_id].latency_ms}
                 for n in plan.nodes] + (
                 [{"node_id": "verify_adhoc", "kind": "verify",
-                  "model_tier": "verifier", "depends_on": ["generate"],
+                  "model_tier": "verifier",
+                  # Depends on the plan's final generate node (named
+                  # "generate" in templates, "synthesize" in decomposed
+                  # plans) so graph renderers can place it correctly.
+                  "depends_on": [next(
+                      (n.node_id for n in reversed(plan.nodes)
+                       if n.kind == "generate"), "generate")],
                   "status": node_results["verify_adhoc"].status,
                   "latency_ms": node_results["verify_adhoc"].latency_ms}]
                 if verified_adhoc else []),

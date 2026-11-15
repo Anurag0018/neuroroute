@@ -300,3 +300,18 @@ Retrieval is no longer a fixed toy corpus scored by hand:
 
 Tests: 54 passing (6 new in tests/test_retrieval_upgrade.py,
 including a generated-PDF ingestion test).
+
+## Dashboard — visual execution graph (2026-11-15)
+
+The dashboard now renders the execution graph as a real DAG (SVG):
+nodes are laid out in topological levels — parallel branches appear
+side by side — with dependency arrows, per-node kind/tier/status/
+latency, and kind-based colours (retrieve teal, generate indigo,
+verify green). The routing card also shows the decision source
+(rules | llm | llm_dag + planner tier/tokens), and escalations are
+annotated above the graph they produced. The ad-hoc verify node now
+records its true dependency (the plan's final generate node) in the
+trace so it places correctly in decomposed and LLM-planned graphs.
+
+Tests: 56 passing (2 new in tests/test_dashboard.py; the layout
+logic is also exercised headlessly against a decomposed trace).
