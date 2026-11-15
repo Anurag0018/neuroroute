@@ -74,7 +74,7 @@ Rules:
 - verified_large requires a concrete reason (document, risk, or deep analysis), not "to be safe".
 
 Respond with ONLY a JSON object, no other text:
-{{"strategy": "<one of: direct_small, rag_medium, verified_large, tool_assisted, vision_grounded, audio_grounded>", "reason": "<one short sentence>"}}
+{{"strategy": "<one of: direct_small, rag_medium, verified_large, tool_assisted, vision_grounded, audio_grounded>", "reason": "<one short sentence, in English>"}}
 
 Examples:
 Request: "What is the capital of France?" -> {{"strategy": "direct_small", "reason": "Simple factual question."}}

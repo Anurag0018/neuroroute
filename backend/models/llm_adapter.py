@@ -87,16 +87,19 @@ OLLAMA_NUM_PREDICT = {
 def build_prompt(tier: str, query: str,
                  context_docs: list[dict] | None = None) -> str:
     if tier == "verifier":
-        return ("Check the following answer for factual errors. Reply "
-                "starting with VERIFIED if it is accurate, otherwise reply "
-                "with the corrected answer.\n\nAnswer: " + query)
+        return ("Check the following answer for factual errors. Reply in "
+                "English only, starting with VERIFIED if it is accurate, "
+                "otherwise reply with the corrected answer.\n\nAnswer: "
+                + query)
     if context_docs:
         sources = "\n\n".join(
             f"[{d['title']}] {d['text']}" for d in context_docs)
-        return ("Answer the question using ONLY the sources below. If the "
-                "sources do not contain the answer, say so.\n\nSources:\n"
+        return ("Answer the question in English only, using ONLY the "
+                "sources below. If the sources do not contain the answer, "
+                "say so.\n\nSources:\n"
                 f"{sources}\n\nQuestion: {query}\nAnswer:")
-    return query
+    return ("Answer in English only, regardless of the language of the "
+            f"question.\n\n{query}")
 
 
 def parse_generation(data: dict, prompt: str, tier: str = "large") -> Generation:

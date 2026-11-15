@@ -28,9 +28,9 @@ from backend.models.llm_adapter import Generation, parse_generation
 from backend.models.model_registry import estimate_cost_usd
 
 VISION_PROMPT = (
-    "Describe this image in detail. Transcribe any visible text "
-    "exactly, preserving numbers, labels and values. If it shows a "
-    "chart or graph, state the values it presents.")
+    "Describe this image in detail, in English only. Transcribe any "
+    "visible text exactly as written, preserving numbers, labels and "
+    "values. If it shows a chart or graph, state the values it presents.")
 
 _UPLOADS = (Path(__file__).resolve().parent.parent.parent
             / "data" / "uploads")
