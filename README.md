@@ -315,3 +315,30 @@ trace so it places correctly in decomposed and LLM-planned graphs.
 
 Tests: 56 passing (2 new in tests/test_dashboard.py; the layout
 logic is also exercised headlessly against a decomposed trace).
+
+## Embeddings A/B results (2026-11-15, benchmark/retrieval_ab.py)
+
+8 probes over the seed corpus — 3 keyword-style (query uses the
+document's own words) and 5 paraphrase-style (same meaning, different
+words). Top-1 hit = the expected document ranked first.
+
+| Embedder | Keyword | Paraphrase |
+|---|---|---|
+| hashing-1024 (default, no deps) | 3/3 | 3/5 |
+| all-MiniLM-L6-v2 (sentence-transformers) | 3/3 | 4/5 |
+
+Findings:
+- Keyword queries tie — both embedders are perfect, though MiniLM's
+  relevance margins are larger (0.876 vs 0.611 on the quantization
+  probe).
+- Paraphrase is where they separate. Hashing scores the correct
+  document at relevance 0.0 on two probes ("chatbot stop making up
+  facts" → RAG doc; "huge neural network on a small laptop" →
+  quantization doc): zero shared tokens, zero retrieval. MiniLM
+  fixes the laptop probe outright (top-1, 0.208) and lifts the
+  chatbot probe's correct document from 0.0 to 0.152 — still not
+  top-1 (the embeddings document edges it out), an honest near-miss.
+- Verdict: hashing is a sound zero-dependency default for
+  keyword-shaped traffic; semantic embeddings earn their heavy
+  install (torch) exactly when users phrase things their own way.
+  Full per-probe data: benchmark/retrieval_ab_results.json.
