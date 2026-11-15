@@ -1,6 +1,9 @@
 """Node Executor — runs one DAG node against the real (mock) resources."""
 from __future__ import annotations
 
+import time
+
+from backend.execution.tools import ToolError, run_tool
 from backend.models.llm_adapter import default_adapter
 from backend.models.model_registry import NODE_COST_USD, NODE_LATENCY_MS
 from backend.retrieval.retrieval_service import RetrievalService
@@ -26,6 +29,30 @@ class NodeExecutor:
             return NodeResult(node.node_id, node.kind,
                               latency_ms=NODE_LATENCY_MS["retrieve"],
                               cost_usd=NODE_COST_USD["retrieve"], output=docs)
+
+        if node.kind == "tool":
+            # A tool's output enters the graph as evidence documents
+            # (relevance 1.0: a deterministic tool result is ground
+            # truth for the confidence estimator's tool-validation
+            # signal). A failed tool yields NO evidence — the
+            # generate node then answers unaided and confidence
+            # reflects the gap.
+            started = time.time()
+            name = node.params.get("tool", "")
+            try:
+                text = run_tool(name, query)
+                docs_out = [{"id": f"tool:{name}",
+                             "title": f"Tool result ({name})",
+                             "text": text, "source": f"tool:{name}",
+                             "relevance": 1.0}]
+                return NodeResult(node.node_id, node.kind,
+                                  latency_ms=max(int((time.time() - started) * 1000), 1),
+                                  cost_usd=NODE_COST_USD["tool"],
+                                  output=docs_out)
+            except ToolError:
+                return NodeResult(node.node_id, node.kind, status="failed",
+                                  latency_ms=max(int((time.time() - started) * 1000), 1),
+                                  cost_usd=NODE_COST_USD["tool"], output=[])
 
         docs = _docs_for(node, prior)
 
@@ -68,18 +95,19 @@ class NodeExecutor:
 
 def _docs_from(prior: dict[str, NodeResult]) -> list[dict]:
     for r in prior.values():
-        if r.kind == "retrieve" and isinstance(r.output, list):
+        if r.kind in ("retrieve", "tool") and isinstance(r.output, list):
             return r.output
     return []
 
 
 def _docs_for(node: PlanNode, prior: dict[str, NodeResult]) -> list[dict]:
-    """Docs for one node: prefer the retrieve nodes it depends on (a
-    decomposed branch must see its OWN retrieval, not a sibling's);
+    """Docs for one node: prefer the retrieve/tool nodes it depends on
+    (a decomposed branch must see its OWN retrieval, not a sibling's);
     fall back to any retrieval in the graph (Phase 1/2 templates)."""
     for dep in node.depends_on:
         r = prior.get(dep)
-        if r is not None and r.kind == "retrieve" and isinstance(r.output, list):
+        if r is not None and r.kind in ("retrieve", "tool") \
+                and isinstance(r.output, list):
             return r.output
     return _docs_from(prior)
 

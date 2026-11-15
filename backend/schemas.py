@@ -55,7 +55,7 @@ class ComplexityEstimate:
 @dataclass
 class PlanNode:
     node_id: str
-    kind: str                       # retrieve | generate | verify  (allowlist)
+    kind: str                       # retrieve | generate | verify | tool  (allowlist)
     model_tier: str | None = None   # small | medium | large | verifier
     depends_on: list[str] = field(default_factory=list)
     # Phase 3: per-node payload, e.g. {"sub_question": "..."} for a

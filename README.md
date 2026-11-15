@@ -469,3 +469,40 @@ Findings:
     NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules \
       python -m benchmark.run_benchmark \
       --output benchmark/results-cost.json
+
+## Tool engine — subsystem 3 completed (2026-11-15)
+
+The architecture document's Tool Engine ("APIs / Python / Search";
+execution layer: "Tool executor — APIs, calculations, web
+search") is now built, under the document's own rule: the model
+proposes, the backend authorises — never arbitrary tool execution.
+
+- New node kind `tool` in the validator allowlist. A tool node is
+  valid only if it names a REGISTERED tool in its params and
+  carries no model tier. Registered tools (backend/execution/
+  tools.py): `calculator` (arithmetic + percentages, evaluated by
+  walking an AST allowlist — no eval(), names/calls/imports are
+  rejected), `datetime` (weekdays, days-between, date offsets),
+  `web_search` (DuckDuckGo Instant Answers, no API key).
+- Tool output enters the graph as evidence documents with
+  relevance 1.0 — the architecture's "tool validation" confidence
+  signal: a deterministic result is ground truth, and a failed
+  tool yields no evidence, so confidence (and escalation) price
+  its absence. A failed tool path escalates tool_assisted ->
+  rag_medium.
+- Routing: deterministic detection (digits around an operator, a
+  parseable date + a date question, an explicit search request)
+  sends such queries to the new `tool_assisted` strategy: tool
+  node(s) first, then a small model phrases the result (medium
+  for web snippets). Guardrails (high risk / documents) still
+  outrank tools. The LLM strategy router and the LLM DAG planner
+  can both select tools too — the planner via tool nodes with
+  params, authorised by the same validator.
+- The document lists "Python" as a tool surface; that is
+  deliberately NOT implemented as free-form code execution
+  (architecture decision 2: keep execution deterministic, no
+  unrestricted agents). The calculator is the bounded form of it.
+- Benchmark: benchmark/queries_tools.json (4 deterministic tool
+  queries) routes 4/4 in mock mode; base and multipart routing
+  unchanged (24/24, 6/6 — detection has no false positives on
+  either set). 89 tests total.

@@ -62,6 +62,7 @@ Strategies (cheapest first):
 - direct_small: small model only. Simple factual or short questions, no external knowledge needed.
 - rag_medium: retrieve documents, medium model answers from them. Explaining or researching a topic, however technical.
 - decomposed_research: for a request with 2+ distinct sub-questions — each part is answered in parallel and the answers are synthesised. Use ONLY when the request genuinely asks several things at once.
+- tool_assisted: a registered tool computes the answer exactly (calculator for arithmetic/percentages, datetime for date/weekday questions, web_search for explicit web lookups), then a small model phrases it. Use ONLY for a pure calculation, a date question, or an explicit search request — never for explanations.
 - verified_large: large model + verification, ~5x the cost of rag_medium. ONLY for: document inputs, high-risk topics, or deep multi-step analysis.
 
 Rules:
@@ -71,7 +72,7 @@ Rules:
 - verified_large requires a concrete reason (document, risk, or deep analysis), not "to be safe".
 
 Respond with ONLY a JSON object, no other text:
-{{"strategy": "<one of: direct_small, rag_medium, verified_large>", "reason": "<one short sentence>"}}
+{{"strategy": "<one of: direct_small, rag_medium, verified_large, tool_assisted>", "reason": "<one short sentence>"}}
 
 Examples:
 Request: "What is the capital of France?" -> {{"strategy": "direct_small", "reason": "Simple factual question."}}

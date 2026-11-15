@@ -74,7 +74,7 @@ class NeuroRoutePipeline:
                 (r.output for r in node_results.values() if r.kind == "verify"), None)
             relevance = max((d["relevance"] for d in docs), default=0.0)
             confidence = confidence_estimator.estimate(
-                has_retrieval=any(n.kind == "retrieve" for n in plan.nodes),
+                has_retrieval=any(n.kind in ("retrieve", "tool") for n in plan.nodes),
                 retrieval_relevance=relevance, verification=verification)
 
             # Middle band: if no verifier node ran, run one ad-hoc check
@@ -92,7 +92,7 @@ class NeuroRoutePipeline:
                 node_results["verify_adhoc"] = vres
                 verified_adhoc = True
                 confidence = confidence_estimator.estimate(
-                    has_retrieval=any(n.kind == "retrieve" for n in plan.nodes),
+                    has_retrieval=any(n.kind in ("retrieve", "tool") for n in plan.nodes),
                     retrieval_relevance=relevance, verification=vres.output)
 
             target = escalation_target(confidence, plan.strategy, usage, budget)

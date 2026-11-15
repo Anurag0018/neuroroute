@@ -44,7 +44,7 @@ REGISTRY: dict[str, ModelEntry] = {
 
 # Non-model node costs (retrieval, parsing, ...)
 NODE_LATENCY_MS = {"retrieve": 60}
-NODE_COST_USD = {"retrieve": 0.00005}
+NODE_COST_USD = {"retrieve": 0.00005, "tool": 0.00002}
 
 
 def get(tier: str) -> ModelEntry:

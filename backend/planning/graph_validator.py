@@ -7,10 +7,11 @@ structure, and the caller's budget.
 """
 from __future__ import annotations
 
+from backend.execution.tools import TOOL_REGISTRY
 from backend.models.model_registry import REGISTRY
 from backend.schemas import Budget, ExecutionPlan
 
-ALLOWED_NODE_KINDS = {"retrieve", "generate", "verify"}
+ALLOWED_NODE_KINDS = {"retrieve", "generate", "verify", "tool"}
 
 
 class PlanRejected(Exception):
@@ -31,6 +32,16 @@ def validate_plan(plan: ExecutionPlan, budget: Budget) -> ExecutionPlan:
             model_calls += 1
             if node.model_tier not in REGISTRY:
                 raise PlanRejected(f"Unknown model tier: {node.model_tier}")
+        if node.kind == "tool":
+            # Tools are a closed registry: a plan may invoke one only
+            # by its registered name, and a tool is not a model — a
+            # tier on a tool node means the plan is malformed.
+            if node.model_tier is not None:
+                raise PlanRejected("Tool nodes do not take a model tier")
+            if node.params.get("tool") not in TOOL_REGISTRY:
+                raise PlanRejected(
+                    f"Unknown tool: {node.params.get('tool')!r} "
+                    f"(registered: {sorted(TOOL_REGISTRY)})")
         for dep in node.depends_on:
             if dep not in id_set:
                 raise PlanRejected(f"Node {node.node_id} depends on missing node {dep}")

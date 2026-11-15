@@ -1,6 +1,7 @@
 """Graph Generator — turns a strategy into a DAG of PlanNodes."""
 from __future__ import annotations
 
+from backend.execution.tools import detect_tools
 from backend.models.model_registry import estimate_cost_usd
 from backend.planning.decomposer import split_subquestions
 from backend.schemas import (Budget, ComplexityEstimate, ExecutionPlan,
@@ -32,6 +33,19 @@ def build_plan(strategy: str, analysis: InputAnalysis,
         nodes = [PlanNode("retrieve", "retrieve"),
                  PlanNode("generate", "generate", "medium", ["retrieve"])]
         rationale = "Moderate complexity or retrieval required: ground a medium model."
+
+    elif strategy == "tool_assisted":
+        tools = detect_tools(analysis.query) or ["calculator"]
+        nodes = [PlanNode(f"tool_{t}", "tool", None, [], {"tool": t})
+                 for t in tools]
+        # The tool result is the answer's substance; the model only
+        # phrases it — small suffices, except web snippets, which
+        # take a medium model to synthesise safely.
+        tier = "medium" if "web_search" in tools else "small"
+        nodes.append(PlanNode("generate", "generate", tier,
+                              [n.node_id for n in nodes]))
+        rationale = (f"Registered tool(s) {', '.join(tools)} settle this "
+                     f"exactly; a {tier} model phrases the result.")
 
     elif strategy == "decomposed_research":
         subs = split_subquestions(analysis.query) or [analysis.query]

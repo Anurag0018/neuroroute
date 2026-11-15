@@ -41,6 +41,7 @@ Node kinds:
 - retrieve: fetch relevant documents (no model tier).
 - generate: a model writes text. Tiers: small (cheap, simple), medium (grounded answers), large (deep reasoning, synthesis).
 - verify: check a generate node's answer. Tier: verifier. Must depend on that generate node.
+- tool: run one registered tool (no model tier). Its params must name the tool: {{"tool": "calculator"}} for arithmetic/percentages, {{"tool": "datetime"}} for date/weekday questions, {{"tool": "web_search"}} for explicit web lookups. A generate node depending on it phrases its exact result. Use a tool ONLY for a pure calculation, a date question, or an explicit search request.
 
 Rules:
 - Every graph needs at least one generate node, and exactly one FINAL generate node that no other generate depends on (that is the answer).
@@ -50,10 +51,11 @@ Rules:
 - Use the cheapest graph that safely answers the request; retrieval before generation when external knowledge is needed.
 
 Respond with ONLY a JSON object, no other text:
-{{"nodes": [{{"id": "...", "kind": "retrieve|generate|verify", "tier": "small|medium|large|verifier or null", "depends_on": ["..."]}}], "reason": "<one short sentence>"}}
+{{"nodes": [{{"id": "...", "kind": "retrieve|generate|verify|tool", "tier": "small|medium|large|verifier or null", "depends_on": ["..."], "params": {{}}}}], "reason": "<one short sentence>"}}
 
 Examples:
 Request: "What is the capital of France?" -> {{"nodes": [{{"id": "generate", "kind": "generate", "tier": "small", "depends_on": []}}], "reason": "Single simple fact."}}
+Request: "What is 247 * 19 + 305?" -> {{"nodes": [{{"id": "calc", "kind": "tool", "tier": null, "depends_on": [], "params": {{"tool": "calculator"}}}}, {{"id": "generate", "kind": "generate", "tier": "small", "depends_on": ["calc"]}}], "reason": "Pure arithmetic: the calculator settles it exactly."}}
 Request: "Explain how vector databases support semantic search" -> {{"nodes": [{{"id": "retrieve", "kind": "retrieve", "tier": null, "depends_on": []}}, {{"id": "generate", "kind": "generate", "tier": "medium", "depends_on": ["retrieve"]}}], "reason": "Grounded medium answer."}}
 Request: "Compare embeddings and sparse retrieval, covering how each works" -> {{"nodes": [{{"id": "retrieve_1", "kind": "retrieve", "tier": null, "depends_on": []}}, {{"id": "generate_1", "kind": "generate", "tier": "medium", "depends_on": ["retrieve_1"]}}, {{"id": "retrieve_2", "kind": "retrieve", "tier": null, "depends_on": []}}, {{"id": "generate_2", "kind": "generate", "tier": "medium", "depends_on": ["retrieve_2"]}}, {{"id": "synthesize", "kind": "generate", "tier": "large", "depends_on": ["generate_1", "generate_2"]}}], "reason": "Two sub-topics in parallel, merged by synthesis."}}
 
@@ -84,8 +86,11 @@ def _parse_nodes(text: str) -> list[PlanNode] | None:
             deps = item.get("depends_on") or []
             if not isinstance(deps, list):
                 return None
+            params = item.get("params") or {}
+            if not isinstance(params, dict):
+                return None
             nodes.append(PlanNode(str(item["id"]), kind, tier,
-                                  [str(d) for d in deps]))
+                                  [str(d) for d in deps], params))
         if not any(n.kind == "generate" for n in nodes):
             return None
         return nodes
