@@ -10,3 +10,4 @@ import os
 
 os.environ["NR_MODEL_MODE"] = "mock"
 os.environ["NR_DECISION_MODEL"] = "rules"
+os.environ["NR_PLAN_MODEL"] = "strategy"

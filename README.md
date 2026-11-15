@@ -242,3 +242,34 @@ Findings:
   prompt) is a structural overhead rules don't pay. Its value is
   generalisation to query types nobody wrote rules for, not beating
   rules on a fixed set. Rules therefore remain the default.
+
+## Phase 3 — Dynamic execution DAGs (2026-11-15)
+
+Plans are no longer only three fixed templates:
+
+1. **Decomposition (`decomposed_research`)**: a genuinely multi-part
+   request (multiple questions, semicolon clauses, compare requests,
+   conjoined imperatives) is split by a deterministic decomposer
+   into sub-questions. Each gets a parallel retrieve -> medium-generate
+   branch, and a large-model **synthesis** node merges the branch
+   answers. Guardrails still outrank it (a document multipart stays
+   verified_large), and it escalates to verified_large, never sideways.
+   False-positive splits found against the original benchmark
+   ("Compare supervised and unsupervised...", "...and why it matters")
+   are excluded by topic-size and anaphora rules, with regression
+   tests: the original 24 queries still route 24/24, and a new
+   multipart set (benchmark/queries_multipart.json) routes 6/6.
+2. **LLM DAG planner (`NR_PLAN_MODEL=llm`)**: a lightweight LLM now
+   proposes the execution graph itself as JSON — node kinds, tiers,
+   dependencies, parallelism. The proposal runs only if
+   graph_validator authorises it unchanged (allowlist, registered
+   tiers, acyclic, within budget); guardrail inputs bypass it, and
+   any failure falls back to the strategy templates. Its planning
+   call is charged to the request like the Phase 2 router's. A
+   free-form llm_dag plan has no escalation template, so a
+   low-confidence result stands flagged uncertain rather than
+   escalating.
+
+Tests: 48 passing (13 new in tests/test_phase3.py, stub adapters).
+Multipart benchmark:
+    python -m benchmark.run_benchmark --dataset benchmark/queries_multipart.json --output benchmark/results_multipart.json

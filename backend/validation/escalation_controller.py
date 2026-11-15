@@ -15,6 +15,9 @@ def escalation_target(confidence: ConfidenceReport, current_strategy: str,
         return None
     if usage.escalations >= budget.max_escalations:
         return None
+    # A free-form plan (Phase 3 llm_dag) has no defined "next stronger
+    # template", so it cannot escalate — next_strategy returns None
+    # and its result stands, flagged uncertain if confidence is low.
     target = next_strategy(current_strategy)
     if target is None:
         return None

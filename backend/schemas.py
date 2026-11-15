@@ -58,6 +58,9 @@ class PlanNode:
     kind: str                       # retrieve | generate | verify  (allowlist)
     model_tier: str | None = None   # small | medium | large | verifier
     depends_on: list[str] = field(default_factory=list)
+    # Phase 3: per-node payload, e.g. {"sub_question": "..."} for a
+    # decomposed branch, or {"synthesize": True} for a merge node.
+    params: dict = field(default_factory=dict)
 
 
 @dataclass

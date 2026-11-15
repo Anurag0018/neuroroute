@@ -34,12 +34,12 @@ import os
 import re
 from typing import Protocol
 
-from backend.intelligence.routing_policy import ESCALATION_LADDER, choose_strategy
+from backend.intelligence.routing_policy import ALL_STRATEGIES, choose_strategy
 from backend.planning.graph_generator import build_plan
 from backend.schemas import (Budget, ComplexityEstimate, ExecutionPlan,
                              InputAnalysis)
 
-STRATEGIES = tuple(ESCALATION_LADDER)
+STRATEGIES = tuple(ALL_STRATEGIES)
 
 
 class DecisionModel(Protocol):
@@ -156,7 +156,12 @@ class LLMDecisionModel:
 
 
 def default_decision_model():
-    """Rules by default; LLM router when NR_DECISION_MODEL=llm."""
+    """Rules by default; LLM router when NR_DECISION_MODEL=llm;
+    Phase 3 LLM DAG planner when NR_PLAN_MODEL=llm (takes precedence:
+    the planner replaces strategy selection with full graph design)."""
+    if os.environ.get("NR_PLAN_MODEL", "").lower() == "llm":
+        from backend.planning.dag_planner import LLMDagPlanner
+        return LLMDagPlanner()
     if os.environ.get("NR_DECISION_MODEL", "rules").lower() == "llm":
         return LLMDecisionModel()
     return RuleBasedDecisionModel()

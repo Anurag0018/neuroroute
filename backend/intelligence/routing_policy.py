@@ -9,6 +9,7 @@ correctness data (see README, Benchmarking).
 """
 from __future__ import annotations
 
+from backend.planning.decomposer import split_subquestions
 from backend.schemas import ComplexityEstimate, InputAnalysis
 
 PATH_A_MAX_COMPLEXITY = 0.35
@@ -22,6 +23,11 @@ def choose_strategy(analysis: InputAnalysis,
     if (analysis.risk_level == "high" or analysis.modality == "document"
             or complexity.complexity_score >= PATH_C_MIN_COMPLEXITY):
         return "verified_large"
+    # Phase 3: a genuinely multi-part request is decomposed into
+    # parallel sub-question branches plus a synthesis node — unless a
+    # guardrail above already claimed it.
+    if len(split_subquestions(analysis.query)) >= 2:
+        return "decomposed_research"
     if complexity.complexity_score < PATH_A_MAX_COMPLEXITY and not (
             complexity.retrieval_required or complexity.reasoning_required):
         return "direct_small"
@@ -31,7 +37,19 @@ def choose_strategy(analysis: InputAnalysis,
 # Escalation ladder: each step is a strictly stronger path.
 ESCALATION_LADDER = ["direct_small", "rag_medium", "verified_large"]
 
+# Every registered strategy (Phase 3 adds decomposed_research, which
+# is a peer of rag_medium, not a rung above it).
+ALL_STRATEGIES = ["direct_small", "rag_medium", "decomposed_research",
+                  "verified_large"]
+
+# Escalation moves to a strictly stronger path. decomposed_research
+# escalates to verified_large (a failed synthesis needs verification,
+# not another decomposition); rag_medium does NOT escalate sideways
+# into decomposition.
+_ESCALATION_NEXT = {"direct_small": "rag_medium",
+                    "rag_medium": "verified_large",
+                    "decomposed_research": "verified_large"}
+
 
 def next_strategy(strategy: str) -> str | None:
-    i = ESCALATION_LADDER.index(strategy)
-    return ESCALATION_LADDER[i + 1] if i + 1 < len(ESCALATION_LADDER) else None
+    return _ESCALATION_NEXT.get(strategy)
