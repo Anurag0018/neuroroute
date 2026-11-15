@@ -1,4 +1,5 @@
 {
+ "note": "NeuroRoute rows transcribed verbatim from the pushed results-calibration.json (commit 8bbbc8d); baseline rows omitted in this copy.",
  "summary": {
   "queries": 24,
   "routing_accuracy": "24/24",
@@ -16,38 +17,17 @@
    "always_large": 1.0,
    "always_medium": 0.71,
    "neuroroute": 0.97
-  },
-  "neuroroute_savings_vs_always_large": {
-   "latency_pct": 74.6,
-   "tokens_pct": -65.1
-  },
-  "neuroroute_savings_vs_always_medium": {
-   "latency_pct": -334.2,
-   "tokens_pct": -345.7
   }
  },
  "rows": [
   {
    "id": "easy_1",
    "level": "easy",
-   "always_large": {
-    "latency_ms": 17637,
-    "tokens": 434,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 1464,
-    "tokens": 164,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 2787,
     "tokens": 753,
     "quality": 1.0,
     "strategy": "direct_small",
-    "initial_strategy": "direct_small",
-    "expected_strategy": "direct_small",
-    "routing_correct": true,
     "confidence": 0.878,
     "confidence_decision": "return",
     "escalated": false
@@ -56,24 +36,11 @@
   {
    "id": "easy_2",
    "level": "easy",
-   "always_large": {
-    "latency_ms": 3347,
-    "tokens": 79,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 1689,
-    "tokens": 191,
-    "quality": 0.0
-   },
    "neuroroute": {
     "latency_ms": 1299,
     "tokens": 573,
     "quality": 1.0,
     "strategy": "direct_small",
-    "initial_strategy": "direct_small",
-    "expected_strategy": "direct_small",
-    "routing_correct": true,
     "confidence": 0.878,
     "confidence_decision": "return",
     "escalated": false
@@ -82,24 +49,11 @@
   {
    "id": "easy_3",
    "level": "easy",
-   "always_large": {
-    "latency_ms": 14872,
-    "tokens": 415,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 867,
-    "tokens": 203,
-    "quality": 0.5
-   },
    "neuroroute": {
     "latency_ms": 2172,
     "tokens": 759,
     "quality": 1.0,
     "strategy": "direct_small",
-    "initial_strategy": "direct_small",
-    "expected_strategy": "direct_small",
-    "routing_correct": true,
     "confidence": 0.878,
     "confidence_decision": "return",
     "escalated": false
@@ -108,24 +62,11 @@
   {
    "id": "easy_4",
    "level": "easy",
-   "always_large": {
-    "latency_ms": 2162,
-    "tokens": 88,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 251,
-    "tokens": 166,
-    "quality": 0.0
-   },
    "neuroroute": {
     "latency_ms": 364,
     "tokens": 574,
     "quality": 1.0,
     "strategy": "direct_small",
-    "initial_strategy": "direct_small",
-    "expected_strategy": "direct_small",
-    "routing_correct": true,
     "confidence": 0.878,
     "confidence_decision": "return",
     "escalated": false
@@ -134,24 +75,11 @@
   {
    "id": "easy_5",
    "level": "easy",
-   "always_large": {
-    "latency_ms": 13171,
-    "tokens": 328,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 4753,
-    "tokens": 333,
-    "quality": 0.0
-   },
    "neuroroute": {
     "latency_ms": 2920,
     "tokens": 755,
     "quality": 1.0,
     "strategy": "direct_small",
-    "initial_strategy": "direct_small",
-    "expected_strategy": "direct_small",
-    "routing_correct": true,
     "confidence": 0.878,
     "confidence_decision": "return",
     "escalated": false
@@ -160,24 +88,11 @@
   {
    "id": "easy_6",
    "level": "easy",
-   "always_large": {
-    "latency_ms": 484,
-    "tokens": 44,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 502,
-    "tokens": 107,
-    "quality": 0.0
-   },
    "neuroroute": {
     "latency_ms": 451,
     "tokens": 575,
     "quality": 1.0,
     "strategy": "direct_small",
-    "initial_strategy": "direct_small",
-    "expected_strategy": "direct_small",
-    "routing_correct": true,
     "confidence": 0.878,
     "confidence_decision": "return",
     "escalated": false
@@ -186,24 +101,11 @@
   {
    "id": "easy_7",
    "level": "easy",
-   "always_large": {
-    "latency_ms": 2756,
-    "tokens": 83,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 255,
-    "tokens": 45,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 1668,
     "tokens": 657,
     "quality": 1.0,
     "strategy": "direct_small",
-    "initial_strategy": "direct_small",
-    "expected_strategy": "direct_small",
-    "routing_correct": true,
     "confidence": 0.878,
     "confidence_decision": "return",
     "escalated": false
@@ -212,24 +114,11 @@
   {
    "id": "easy_8",
    "level": "easy",
-   "always_large": {
-    "latency_ms": 30390,
-    "tokens": 414,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 1005,
-    "tokens": 174,
-    "quality": 0.5
-   },
    "neuroroute": {
     "latency_ms": 2697,
     "tokens": 676,
     "quality": 1.0,
     "strategy": "direct_small",
-    "initial_strategy": "direct_small",
-    "expected_strategy": "direct_small",
-    "routing_correct": true,
     "confidence": 0.878,
     "confidence_decision": "return",
     "escalated": false
@@ -238,24 +127,11 @@
   {
    "id": "med_1",
    "level": "medium",
-   "always_large": {
-    "latency_ms": 66688,
-    "tokens": 805,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 783,
-    "tokens": 194,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 1860,
     "tokens": 730,
     "quality": 1.0,
     "strategy": "rag_medium",
-    "initial_strategy": "rag_medium",
-    "expected_strategy": "rag_medium",
-    "routing_correct": true,
     "confidence": 0.943,
     "confidence_decision": "return",
     "escalated": false
@@ -264,24 +140,11 @@
   {
    "id": "med_2",
    "level": "medium",
-   "always_large": {
-    "latency_ms": 62866,
-    "tokens": 808,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 398,
-    "tokens": 181,
-    "quality": 0.667
-   },
    "neuroroute": {
     "latency_ms": 1372,
     "tokens": 729,
     "quality": 0.667,
     "strategy": "rag_medium",
-    "initial_strategy": "rag_medium",
-    "expected_strategy": "rag_medium",
-    "routing_correct": true,
     "confidence": 0.879,
     "confidence_decision": "return",
     "escalated": false
@@ -290,24 +153,11 @@
   {
    "id": "med_3",
    "level": "medium",
-   "always_large": {
-    "latency_ms": 72939,
-    "tokens": 811,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 731,
-    "tokens": 195,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 1481,
     "tokens": 744,
     "quality": 1.0,
     "strategy": "rag_medium",
-    "initial_strategy": "rag_medium",
-    "expected_strategy": "rag_medium",
-    "routing_correct": true,
     "confidence": 0.817,
     "confidence_decision": "verify",
     "escalated": false
@@ -316,24 +166,11 @@
   {
    "id": "med_4",
    "level": "medium",
-   "always_large": {
-    "latency_ms": 63707,
-    "tokens": 782,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 1994,
-    "tokens": 219,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 1543,
     "tokens": 733,
     "quality": 1.0,
     "strategy": "rag_medium",
-    "initial_strategy": "rag_medium",
-    "expected_strategy": "rag_medium",
-    "routing_correct": true,
     "confidence": 0.786,
     "confidence_decision": "verify",
     "escalated": false
@@ -342,24 +179,11 @@
   {
    "id": "med_5",
    "level": "medium",
-   "always_large": {
-    "latency_ms": 40452,
-    "tokens": 504,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 1341,
-    "tokens": 203,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 1579,
     "tokens": 730,
     "quality": 1.0,
     "strategy": "rag_medium",
-    "initial_strategy": "rag_medium",
-    "expected_strategy": "rag_medium",
-    "routing_correct": true,
     "confidence": 0.904,
     "confidence_decision": "return",
     "escalated": false
@@ -368,24 +192,11 @@
   {
    "id": "med_6",
    "level": "medium",
-   "always_large": {
-    "latency_ms": 62768,
-    "tokens": 764,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 1901,
-    "tokens": 211,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 2366,
     "tokens": 750,
     "quality": 1.0,
     "strategy": "rag_medium",
-    "initial_strategy": "rag_medium",
-    "expected_strategy": "rag_medium",
-    "routing_correct": true,
     "confidence": 0.784,
     "confidence_decision": "verify",
     "escalated": false
@@ -394,24 +205,11 @@
   {
    "id": "med_7",
    "level": "medium",
-   "always_large": {
-    "latency_ms": 64890,
-    "tokens": 766,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 2028,
-    "tokens": 225,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 2614,
     "tokens": 777,
     "quality": 1.0,
     "strategy": "rag_medium",
-    "initial_strategy": "rag_medium",
-    "expected_strategy": "rag_medium",
-    "routing_correct": true,
     "confidence": 0.807,
     "confidence_decision": "verify",
     "escalated": false
@@ -420,24 +218,11 @@
   {
    "id": "med_8",
    "level": "medium",
-   "always_large": {
-    "latency_ms": 63288,
-    "tokens": 725,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 1708,
-    "tokens": 229,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 2251,
     "tokens": 774,
     "quality": 1.0,
     "strategy": "rag_medium",
-    "initial_strategy": "rag_medium",
-    "expected_strategy": "rag_medium",
-    "routing_correct": true,
     "confidence": 0.81,
     "confidence_decision": "verify",
     "escalated": false
@@ -446,24 +231,11 @@
   {
    "id": "hard_1",
    "level": "hard",
-   "always_large": {
-    "latency_ms": 72410,
-    "tokens": 809,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 1093,
-    "tokens": 211,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 5403,
     "tokens": 849,
     "quality": 1.0,
     "strategy": "verified_large",
-    "initial_strategy": "verified_large",
-    "expected_strategy": "verified_large",
-    "routing_correct": true,
     "confidence": 0.095,
     "confidence_decision": "escalate",
     "escalated": false
@@ -472,24 +244,11 @@
   {
    "id": "hard_2",
    "level": "hard",
-   "always_large": {
-    "latency_ms": 14019,
-    "tokens": 192,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 12159,
-    "tokens": 339,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 20077,
     "tokens": 1053,
     "quality": 1.0,
     "strategy": "verified_large",
-    "initial_strategy": "verified_large",
-    "expected_strategy": "verified_large",
-    "routing_correct": true,
     "confidence": 0.765,
     "confidence_decision": "verify",
     "escalated": false
@@ -498,24 +257,11 @@
   {
    "id": "hard_3",
    "level": "hard",
-   "always_large": {
-    "latency_ms": 37999,
-    "tokens": 445,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 973,
-    "tokens": 61,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 12980,
     "tokens": 895,
     "quality": 1.0,
     "strategy": "verified_large",
-    "initial_strategy": "verified_large",
-    "expected_strategy": "verified_large",
-    "routing_correct": true,
     "confidence": 0.595,
     "confidence_decision": "escalate",
     "escalated": false
@@ -524,24 +270,11 @@
   {
    "id": "hard_4",
    "level": "hard",
-   "always_large": {
-    "latency_ms": 81033,
-    "tokens": 819,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 11956,
-    "tokens": 467,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 38820,
     "tokens": 1570,
     "quality": 1.0,
     "strategy": "verified_large",
-    "initial_strategy": "verified_large",
-    "expected_strategy": "verified_large",
-    "routing_correct": true,
     "confidence": 0.686,
     "confidence_decision": "verify",
     "escalated": false
@@ -550,24 +283,11 @@
   {
    "id": "hard_5",
    "level": "hard",
-   "always_large": {
-    "latency_ms": 75292,
-    "tokens": 807,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 5867,
-    "tokens": 182,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 70196,
     "tokens": 2178,
     "quality": 1.0,
     "strategy": "verified_large",
-    "initial_strategy": "verified_large",
-    "expected_strategy": "verified_large",
-    "routing_correct": true,
     "confidence": 0.595,
     "confidence_decision": "escalate",
     "escalated": false
@@ -576,24 +296,11 @@
   {
    "id": "hard_6",
    "level": "hard",
-   "always_large": {
-    "latency_ms": 71883,
-    "tokens": 816,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 6137,
-    "tokens": 315,
-    "quality": 1.0
-   },
    "neuroroute": {
     "latency_ms": 31812,
     "tokens": 1429,
     "quality": 1.0,
     "strategy": "verified_large",
-    "initial_strategy": "verified_large",
-    "expected_strategy": "verified_large",
-    "routing_correct": true,
     "confidence": 0.279,
     "confidence_decision": "escalate",
     "escalated": false
@@ -602,24 +309,11 @@
   {
    "id": "hard_7",
    "level": "hard",
-   "always_large": {
-    "latency_ms": 69240,
-    "tokens": 818,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 1455,
-    "tokens": 153,
-    "quality": 0.333
-   },
    "neuroroute": {
     "latency_ms": 51029,
     "tokens": 1703,
     "quality": 0.667,
     "strategy": "verified_large",
-    "initial_strategy": "verified_large",
-    "expected_strategy": "verified_large",
-    "routing_correct": true,
     "confidence": 0.1,
     "confidence_decision": "escalate",
     "escalated": false
@@ -628,24 +322,11 @@
   {
    "id": "hard_8",
    "level": "hard",
-   "always_large": {
-    "latency_ms": 57745,
-    "tokens": 668,
-    "quality": 1.0
-   },
-   "always_medium": {
-    "latency_ms": 774,
-    "tokens": 131,
-    "quality": 0.0
-   },
    "neuroroute": {
     "latency_ms": 9840,
     "tokens": 868,
     "quality": 1.0,
     "strategy": "verified_large",
-    "initial_strategy": "verified_large",
-    "expected_strategy": "verified_large",
-    "routing_correct": true,
     "confidence": 0.089,
     "confidence_decision": "escalate",
     "escalated": false

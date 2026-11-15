@@ -20,9 +20,20 @@ PATH_C_MIN_COMPLEXITY = 0.75
 def choose_strategy(analysis: InputAnalysis,
                     complexity: ComplexityEstimate) -> str:
     # Document inputs imply parsing + long context + grounding checks,
-    # so they always take the verified path in Phase 1.
-    if (analysis.risk_level == "high" or analysis.modality == "document"
-            or complexity.complexity_score >= PATH_C_MIN_COMPLEXITY):
+    # so they always take the verified path in Phase 1. (High risk with
+    # an image also lands here — the verified template includes the
+    # perceive node for image inputs, so the evidence is not lost.)
+    if analysis.risk_level == "high" or analysis.modality == "document":
+        return "verified_large"
+    # Multimodal: an image must be perceived before any text model
+    # can reason about it (architecture: route through vision/OCR
+    # preprocessing only when required). Perception is a requirement,
+    # not a complexity judgement — verification for hard image
+    # questions arrives via escalation (vision_grounded ->
+    # verified_large), which keeps the perceive node in the plan.
+    if analysis.modality == "image":
+        return "vision_grounded"
+    if complexity.complexity_score >= PATH_C_MIN_COMPLEXITY:
         return "verified_large"
     # Tool engine: a request a registered tool can settle exactly
     # (arithmetic, date arithmetic, an explicit web lookup) goes to
@@ -49,7 +60,7 @@ ESCALATION_LADDER = ["direct_small", "rag_medium", "verified_large"]
 # tool_assisted, a peer of direct_small whose evidence is a tool
 # result rather than the model's own knowledge).
 ALL_STRATEGIES = ["direct_small", "rag_medium", "decomposed_research",
-                  "verified_large", "tool_assisted"]
+                  "verified_large", "tool_assisted", "vision_grounded"]
 
 # Escalation moves to a strictly stronger path. decomposed_research
 # escalates to verified_large (a failed synthesis needs verification,
@@ -59,7 +70,8 @@ ALL_STRATEGIES = ["direct_small", "rag_medium", "decomposed_research",
 _ESCALATION_NEXT = {"direct_small": "rag_medium",
                     "rag_medium": "verified_large",
                     "decomposed_research": "verified_large",
-                    "tool_assisted": "rag_medium"}
+                    "tool_assisted": "rag_medium",
+                    "vision_grounded": "verified_large"}
 
 
 def next_strategy(strategy: str) -> str | None:

@@ -58,6 +58,7 @@ def health():
             "decision_model": os.environ.get("NR_DECISION_MODEL", "rules"),
             "plan_model": os.environ.get("NR_PLAN_MODEL", "strategy"),
             "embeddings": retrieval.embedder.name,
+            "vision_model": os.environ.get("NR_VISION_MODEL", "llava:7b"),
             "prices_per_1k_usd": rate_card(),
             "documents": retrieval.documents()}
 
@@ -91,6 +92,11 @@ async def upload_document(file: UploadFile = File(...)):
     _UPLOADS.mkdir(parents=True, exist_ok=True)
     dest = _UPLOADS / Path(file.filename).name
     dest.write_bytes(await file.read())
+    if dest.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+        # Images are not text-indexed: they are perceived per query
+        # by the multimodal engine when named in `attachments`.
+        return {"source": dest.name, "kind": "image",
+                "chunks_ingested": 0, "documents": retrieval.documents()}
     try:
         chunks = retrieval.ingest_file(dest)
     except ValueError as e:

@@ -42,6 +42,7 @@ Node kinds:
 - generate: a model writes text. Tiers: small (cheap, simple), medium (grounded answers), large (deep reasoning, synthesis).
 - verify: check a generate node's answer. Tier: verifier. Must depend on that generate node.
 - tool: run one registered tool (no model tier). Its params must name the tool: {{"tool": "calculator"}} for arithmetic/percentages, {{"tool": "datetime"}} for date/weekday questions, {{"tool": "web_search"}} for explicit web lookups. A generate node depending on it phrases its exact result. Use a tool ONLY for a pure calculation, a date question, or an explicit search request.
+- perceive: run the vision model over an uploaded image (no model tier). Its params must name the file: {{"attachment": "<uploaded image filename>"}}. A generate node depending on it answers from the perception.
 
 Rules:
 - Every graph needs at least one generate node, and exactly one FINAL generate node that no other generate depends on (that is the answer).
@@ -51,7 +52,7 @@ Rules:
 - Use the cheapest graph that safely answers the request; retrieval before generation when external knowledge is needed.
 
 Respond with ONLY a JSON object, no other text:
-{{"nodes": [{{"id": "...", "kind": "retrieve|generate|verify|tool", "tier": "small|medium|large|verifier or null", "depends_on": ["..."], "params": {{}}}}], "reason": "<one short sentence>"}}
+{{"nodes": [{{"id": "...", "kind": "retrieve|generate|verify|tool|perceive", "tier": "small|medium|large|verifier or null", "depends_on": ["..."], "params": {{}}}}], "reason": "<one short sentence>"}}
 
 Examples:
 Request: "What is the capital of France?" -> {{"nodes": [{{"id": "generate", "kind": "generate", "tier": "small", "depends_on": []}}], "reason": "Single simple fact."}}
@@ -117,6 +118,12 @@ class LLMDagPlanner:
         if analysis.risk_level == "high" or analysis.modality == "document":
             self.last_source = "llm_dag_guardrail"
             return build_plan("verified_large", analysis, complexity, budget)
+        # Images bypass the planner too: the planner cannot know the
+        # attachment's filename, and perception is a fixed
+        # preprocessing requirement, not a design choice.
+        if analysis.modality == "image":
+            self.last_source = "llm_dag_guardrail"
+            return build_plan("vision_grounded", analysis, complexity, budget)
 
         prompt = _DAG_PROMPT.format(
             query=analysis.query, task_type=analysis.task_type,

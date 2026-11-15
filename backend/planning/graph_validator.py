@@ -11,7 +11,7 @@ from backend.execution.tools import TOOL_REGISTRY
 from backend.models.model_registry import REGISTRY
 from backend.schemas import Budget, ExecutionPlan
 
-ALLOWED_NODE_KINDS = {"retrieve", "generate", "verify", "tool"}
+ALLOWED_NODE_KINDS = {"retrieve", "generate", "verify", "tool", "perceive"}
 
 
 class PlanRejected(Exception):
@@ -42,6 +42,15 @@ def validate_plan(plan: ExecutionPlan, budget: Budget) -> ExecutionPlan:
                 raise PlanRejected(
                     f"Unknown tool: {node.params.get('tool')!r} "
                     f"(registered: {sorted(TOOL_REGISTRY)})")
+        if node.kind == "perceive":
+            # Multimodal preprocessing is a vision-model call, priced
+            # separately — a tier on it is malformed, and it must
+            # name the image it perceives.
+            if node.model_tier is not None:
+                raise PlanRejected("Perceive nodes do not take a model tier")
+            if not node.params.get("attachment"):
+                raise PlanRejected(
+                    "Perceive node must name an attachment in params")
         for dep in node.depends_on:
             if dep not in id_set:
                 raise PlanRejected(f"Node {node.node_id} depends on missing node {dep}")

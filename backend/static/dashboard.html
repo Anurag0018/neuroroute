@@ -23,7 +23,7 @@
 <textarea id="q">Research how retrieval augmented generation improves factual accuracy</textarea>
 <br><button onclick="run()">Run request</button>
 <span style="margin-left:14px">
-  <input type="file" id="doc" accept=".pdf,.txt,.md">
+  <input type="file" id="doc" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp,.gif">
   <button onclick="upload()">Upload document</button>
   <span id="docStatus" class="muted"></span>
 </span>
@@ -57,7 +57,7 @@ function renderWaterfall(t) {
   const rows = [];
   if (base > 0) rows.push({id: 'decision (' + (t.decision.source || '') + ')', kind: 'planning', start: 0, dur: base});
   t.execution_graph.forEach(n => rows.push({id: n.node_id, kind: n.kind, start: base + off[n.node_id], dur: n.latency_ms}));
-  const colors = {retrieve: '#2dd4bf', generate: '#5b6cff', verify: '#43d17c', planning: '#e0a458', tool: '#e879c6'};
+  const colors = {retrieve: '#2dd4bf', generate: '#5b6cff', verify: '#43d17c', planning: '#e0a458', tool: '#e879c6', perceive: '#c084fc'};
   const x = ms => labelW + (ms / total) * plotW;
   let bars = '', ticks = '';
   [0, 0.25, 0.5, 0.75, 1].forEach(f => {

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 
+from backend.execution.perception import PerceptionError, VisionPerceiver
 from backend.execution.tools import ToolError, run_tool
 from backend.models.llm_adapter import default_adapter
 from backend.models.model_registry import NODE_COST_USD, NODE_LATENCY_MS
@@ -16,6 +17,7 @@ class NodeExecutor:
                  retrieval: RetrievalService | None = None):
         self.adapter = adapter or default_adapter()
         self.retrieval = retrieval or RetrievalService()
+        self.perceiver = VisionPerceiver()
 
     def execute(self, node: PlanNode, query: str,
                 prior: dict[str, NodeResult],
@@ -53,6 +55,27 @@ class NodeExecutor:
                 return NodeResult(node.node_id, node.kind, status="failed",
                                   latency_ms=max(int((time.time() - started) * 1000), 1),
                                   cost_usd=NODE_COST_USD["tool"], output=[])
+
+        if node.kind == "perceive":
+            # Multimodal preprocessing: the vision model turns the
+            # image into evidence text (description + transcription)
+            # that downstream generate nodes ground on, exactly like
+            # retrieved documents. Failure = no evidence.
+            attachment = node.params.get("attachment", "")
+            try:
+                gen = self.perceiver.perceive(attachment, query)
+                docs_out = [{"id": f"image:{attachment}",
+                             "title": f"Image perception ({attachment})",
+                             "text": gen.text,
+                             "source": f"image:{attachment}",
+                             "relevance": 1.0}]
+                return NodeResult(node.node_id, node.kind,
+                                  latency_ms=gen.latency_ms,
+                                  tokens=gen.tokens, cost_usd=gen.cost_usd,
+                                  output=docs_out)
+            except PerceptionError:
+                return NodeResult(node.node_id, node.kind, status="failed",
+                                  output=[])
 
         docs = _docs_for(node, prior)
 
@@ -95,7 +118,8 @@ class NodeExecutor:
 
 def _docs_from(prior: dict[str, NodeResult]) -> list[dict]:
     for r in prior.values():
-        if r.kind in ("retrieve", "tool") and isinstance(r.output, list):
+        if r.kind in ("retrieve", "tool", "perceive") \
+                and isinstance(r.output, list):
             return r.output
     return []
 
@@ -106,7 +130,7 @@ def _docs_for(node: PlanNode, prior: dict[str, NodeResult]) -> list[dict]:
     fall back to any retrieval in the graph (Phase 1/2 templates)."""
     for dep in node.depends_on:
         r = prior.get(dep)
-        if r is not None and r.kind in ("retrieve", "tool") \
+        if r is not None and r.kind in ("retrieve", "tool", "perceive") \
                 and isinstance(r.output, list):
             return r.output
     return _docs_from(prior)

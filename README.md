@@ -523,3 +523,45 @@ perfect, 94.7% faster and 93.9% cheaper than always-large
 (quality-per-dollar 25,641 vs 786, a 33x gap). This is the
 architecture document's core claim in miniature: choose the
 right computational pathway, don't just buy a bigger model.
+
+## Multimodal engine — subsystem 3 completed (2026-11-15)
+
+The architecture routes multimodal requests "through OCR, vision
+or audio preprocessing only when required" (section A). That is
+now implemented as a first-class graph node:
+
+- **New node kind `perceive`** (validator allowlist): runs the
+  vision model over one image attachment and emits its output as
+  evidence documents (description + exact transcription of
+  visible text — the OCR duty), which downstream generate nodes
+  ground on exactly like retrieved documents. It takes no model
+  tier and must name its attachment, or the plan is rejected.
+- **Routing**: an image attachment routes to the new
+  `vision_grounded` strategy (perceive -> medium generate).
+  Perception is a requirement, not a complexity judgement, so
+  the modality decision precedes the complexity path; hard image
+  questions escalate vision_grounded -> verified_large, and the
+  verified template *keeps* the perceive node — escalating away
+  from the image evidence would defeat the verification.
+  Guardrails still outrank: a high-risk image question ("what
+  medicine for this rash?" + photo) goes straight to
+  verified_large, perceive node included.
+- **Perceiver**: mock by default (a labelled placeholder — no
+  visual content is invented); with NR_MODEL_MODE=ollama it calls
+  a local vision model (NR_VISION_MODEL, default llava:7b;
+  moondream is a lighter alternative), priced at the medium
+  tier's reference rate. A missing file or unreachable model
+  fails the node with no evidence, like a failed tool.
+- Uploads: POST /documents now accepts images (stored for
+  per-query perception instead of text indexing); the dashboard
+  upload accepts image files and auto-attaches them.
+- The LLM DAG planner bypasses image requests to the
+  vision_grounded template (it cannot know attachment filenames;
+  perception is a fixed preprocessing requirement, not a design
+  choice), while the Phase 2 router prompt documents the new
+  strategy.
+- Benchmark: benchmark/queries_vision.json (3 queries over the
+  generated assets in benchmark/assets/ — a labelled bar chart
+  and an invoice screenshot) routes 3/3 in mock mode; base,
+  multipart and tool routing unchanged. 99 tests total. Real
+  runs need `ollama pull llava:7b` once.

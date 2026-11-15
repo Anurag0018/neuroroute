@@ -1,0 +1,13 @@
+{
+ "note": "TUNED v1.1 FULL run by Anurag on his MacBook Air, 2026-11-14, NR_MODEL_MODE=ollama, 24 queries. Supersedes the untuned full run as the citable result. Tuning: evidence-only adhoc verification + per-tier num_predict caps (baselines capped via same adapter).",
+ "summary": {
+  "queries": 24,
+  "routing_accuracy": "24/24",
+  "avg_latency_ms": {"always_large": 26825.5, "always_medium": 2681.67, "neuroroute": 10021.83},
+  "avg_tokens": {"always_large": 520.46, "always_medium": 182.96, "neuroroute": 439.92},
+  "avg_quality": {"always_large": 1.0, "always_medium": 0.88, "neuroroute": 0.97},
+  "neuroroute_savings_vs_always_large": {"latency_pct": 62.6, "tokens_pct": 15.5},
+  "neuroroute_savings_vs_always_medium": {"latency_pct": -273.7, "tokens_pct": -140.4}
+ },
+ "vs_untuned_neuroroute": {"latency_ms": "13107 -> 10022 (-23.5%)", "tokens": "542 -> 440 (-18.8%)", "quality": "0.95 -> 0.97"}
+}

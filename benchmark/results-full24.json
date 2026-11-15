@@ -1,0 +1,13 @@
+{
+ "note": "FULL run by Anurag on his MacBook Air, 2026-11-14, NR_MODEL_MODE=ollama, all 24 queries (8 easy/8 medium/8 hard). Real measured results. This supersedes the pilot-9 numbers for resume/hackathon claims.",
+ "summary": {
+  "queries": 24,
+  "routing_accuracy": "24/24",
+  "avg_latency_ms": {"always_large": 31945.75, "always_medium": 3958.38, "neuroroute": 13106.88},
+  "avg_tokens": {"always_large": 578.75, "always_medium": 212.92, "neuroroute": 541.96},
+  "avg_quality": {"always_large": 0.98, "always_medium": 0.92, "neuroroute": 0.95},
+  "neuroroute_savings_vs_always_large": {"latency_pct": 59.0, "tokens_pct": 6.4},
+  "neuroroute_savings_vs_always_medium": {"latency_pct": -231.1, "tokens_pct": -154.5}
+ },
+ "reading": "Defensible claim vs always-large: -59% latency at near-equal quality (0.95 vs 0.98), 24/24 routing. Token savings vs large are small (6.4%) because the hard path pays for retrieval + verifier + occasional escalation on top of the large model, and ad-hoc verification on medium queries adds verifier tokens. Vs always-medium, NeuroRoute is slower/pricier but higher quality (0.95 vs 0.92) - the quality-per-cost frontier argument. Known levers to improve before the hackathon: gate ad-hoc verification tighter, cap per-tier generation length (small model sometimes rambles, e.g. easy_3 524 tok in the live run)."
+}

@@ -1,0 +1,16 @@
+{
+ "note": "PILOT run by Anurag on his MacBook Air, 2026-11-14, NR_MODEL_MODE=ollama, --limit 9 (8 easy + 1 medium, 0 hard). Real measured results for this subset; full 24-query run still pending and will moderate the percentages.",
+ "summary": {
+  "queries": 9,
+  "routing_accuracy": "9/9",
+  "avg_latency_ms": {"always_large": 12902.0, "always_medium": 2422.11, "neuroroute": 2034.11},
+  "avg_tokens": {"always_large": 315.67, "always_medium": 159.44, "neuroroute": 144.67},
+  "avg_quality": {"always_large": 1.0, "always_medium": 0.94, "neuroroute": 1.0},
+  "neuroroute_savings_vs_always_large": {"latency_pct": 84.2, "tokens_pct": 54.2},
+  "neuroroute_savings_vs_always_medium": {"latency_pct": 16.0, "tokens_pct": 9.3}
+ },
+ "highlights": {
+  "easy_1": "NR 1319ms/114tok vs large 18217ms/427tok",
+  "med_1": "NR 2531ms/301tok q=1.0 vs large 42320ms/922tok q=1.0; medium-RAG 934ms/150tok q=1.0"
+ }
+}
