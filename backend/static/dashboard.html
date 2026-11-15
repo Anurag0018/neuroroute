@@ -13,6 +13,8 @@
   .chip b { color:#8fd0ff; } .bar { height:10px; background:#232949; border-radius:5px; overflow:hidden; }
   .bar > div { height:100%; background:#43d17c; } table { width:100%; border-collapse:collapse; font-size:14px; }
   td, th { text-align:left; padding:5px 8px; border-bottom:1px solid #232949; } .muted { color:#9aa3c0; }
+.tracerow { cursor: pointer; }
+.tracerow:hover td { color: #fff; }
 </style>
 </head>
 <body>
@@ -26,7 +28,53 @@
   <span id="docStatus" class="muted"></span>
 </span>
 <div id="out"></div>
+<div id="traces"></div>
 <script>
+function spanOffsets(t) {
+  // Level-synchronous executor: a node starts when its slowest
+  // dependency finishes; siblings overlap. The decision/planning
+  // call (when an LLM planned the run) precedes all execution.
+  const base = (t.decision && t.decision.latency_ms) || 0;
+  const byId = {}; t.execution_graph.forEach(n => byId[n.node_id] = n);
+  const off = {};
+  function start(n) {
+    if (off[n.node_id] !== undefined) return off[n.node_id];
+    const deps = (n.depends_on || []).filter(d => byId[d]);
+    off[n.node_id] = deps.length
+      ? Math.max(...deps.map(d => start(byId[d]) + byId[d].latency_ms)) : 0;
+    return off[n.node_id];
+  }
+  t.execution_graph.forEach(start);
+  const graphTotal = t.execution_graph.reduce(
+    (m, n) => Math.max(m, off[n.node_id] + n.latency_ms), 0);
+  return {base, off, total: base + graphTotal};
+}
+
+function renderWaterfall(t) {
+  const {base, off, total} = spanOffsets(t);
+  if (!total) return '';
+  const W = 720, labelW = 150, plotW = W - labelW - 70, rowH = 26, top = 18;
+  const rows = [];
+  if (base > 0) rows.push({id: 'decision (' + (t.decision.source || '') + ')', kind: 'planning', start: 0, dur: base});
+  t.execution_graph.forEach(n => rows.push({id: n.node_id, kind: n.kind, start: base + off[n.node_id], dur: n.latency_ms}));
+  const colors = {retrieve: '#2dd4bf', generate: '#5b6cff', verify: '#43d17c', planning: '#e0a458'};
+  const x = ms => labelW + (ms / total) * plotW;
+  let bars = '', ticks = '';
+  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+    const tx = x(total * f);
+    ticks += `<line x1="${tx}" y1="${top - 4}" x2="${tx}" y2="${top + rows.length * rowH}" stroke="#2c3355"/>` +
+             `<text x="${tx}" y="10" fill="#9aa3c0" font-size="10" text-anchor="middle">${Math.round(total * f)}ms</text>`;
+  });
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + 4, w = Math.max(2, (r.dur / total) * plotW);
+    bars += `<text x="${labelW - 8}" y="${y + 13}" fill="#e8eaf2" font-size="11.5" text-anchor="end">${r.id}</text>` +
+      `<rect x="${x(r.start)}" y="${y}" width="${w}" height="16" rx="4" fill="${colors[r.kind] || '#888'}"/>` +
+      `<text x="${x(r.start) + w + 6}" y="${y + 13}" fill="#9aa3c0" font-size="11">${r.dur}ms</text>`;
+  });
+  const height = top + rows.length * rowH + 6;
+  return `<div class="card"><b>Execution timeline</b><p class="muted">Span waterfall — parallel branches overlap in time; offsets derived from graph dependencies (level-synchronous executor).</p><div style="overflow-x:auto"><svg width="${W}" height="${height}" viewBox="0 0 ${W} ${height}">${ticks}${bars}</svg></div></div>`;
+}
+
 function levelMap(nodes) {
   const byId = {}; nodes.forEach(n => byId[n.node_id] = n);
   const level = {};
@@ -92,12 +140,8 @@ async function upload() {
   if (res.ok) { attached = t.source; st.textContent = `Ingested ${t.source}: ${t.chunks_ingested} chunk(s). It will be attached to your queries.`; }
   else { st.textContent = 'Upload failed: ' + (t.detail || res.status); }
 }
-async function run() {
+function renderResult(t) {
   const out = document.getElementById('out');
-  out.innerHTML = '<div class="card">Running…</div>';
-  const res = await fetch('/query', {method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({query: document.getElementById('q').value, attachments: attached ? [attached] : []})});
-  const t = await res.json();
   const pct = Math.round(t.confidence.confidence_score * 100);
   const dec = t.decision || {};
   const decLine = `Decision source: <b>${dec.source || 'rules'}</b>` +
@@ -111,6 +155,7 @@ async function run() {
       <p class="muted">${decLine}</p>
       <p class="muted">${t.rationale}</p></div>
     ${renderGraph(t)}
+    ${renderWaterfall(t)}
     <div class="card"><b>Confidence: ${pct}%</b> — decision: ${t.confidence.decision}
       <div class="bar"><div style="width:${pct}%"></div></div>
       <p class="muted">Evidence coverage ${t.confidence.evidence_coverage} · Retrieval relevance ${t.confidence.retrieval_relevance} · Validation ${t.confidence.validation_passed ? 'passed' : 'failed'}</p></div>
@@ -120,6 +165,34 @@ async function run() {
       ${t.escalation_history.length ? '<p class="muted">Escalations: ' + JSON.stringify(t.escalation_history) + '</p>' : ''}
     </div>`;
 }
+
+async function run() {
+  const out = document.getElementById('out');
+  out.innerHTML = '<div class="card">Running…</div>';
+  const res = await fetch('/query', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({query: document.getElementById('q').value, attachments: attached ? [attached] : []})});
+  renderResult(await res.json());
+  loadTraces();
+}
+
+let traceCache = {};
+async function loadTraces() {
+  const el = document.getElementById('traces');
+  try {
+    const res = await fetch('/traces');
+    const list = await res.json();
+    traceCache = {}; list.forEach(t => traceCache[t.request_id] = t);
+    if (!list.length) { el.innerHTML = ''; return; }
+    const rows = list.slice().reverse().map(t =>
+      `<tr class="tracerow" onclick="showTrace('${t.request_id}')"><td>${(t.query || '').slice(0, 60)}</td><td>${t.strategy}</td><td>${Math.round(t.confidence.confidence_score * 100)}%</td><td>${t.metrics.tokens}</td><td>${t.metrics.latency_ms}ms</td></tr>`).join('');
+    el.innerHTML = `<div class="card"><b>Recent traces</b><p class="muted">Click a row to reload its full result, graph and timeline.</p><table><tr><th>Query</th><th>Strategy</th><th>Confidence</th><th>Tokens</th><th>Latency</th></tr>${rows}</table></div>`;
+  } catch (e) { /* the trace list is best-effort */ }
+}
+function showTrace(id) {
+  const t = traceCache[id];
+  if (t) { renderResult(t); window.scrollTo({top: 0, behavior: 'smooth'}); }
+}
+loadTraces();
 </script>
 </body>
 </html>

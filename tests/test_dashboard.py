@@ -12,6 +12,8 @@ def test_dashboard_serves_visual_graph_renderer():
     assert r.status_code == 200
     assert "renderGraph" in r.text
     assert "levelMap" in r.text
+    assert "renderWaterfall" in r.text
+    assert "loadTraces" in r.text
 
 
 def test_health_reports_modes_and_index():
