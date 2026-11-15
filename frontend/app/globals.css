@@ -149,6 +149,17 @@ button, input, textarea { font: inherit; color: inherit; }
   background: rgba(229, 83, 75, 0.09); border: 1px solid rgba(229, 83, 75, 0.3);
   border-radius: 7px;
 }
+.banner {
+  margin-bottom: 14px; padding: 12px 14px; font-size: 13px; line-height: 1.55;
+  color: #f0a49e; background: rgba(229, 83, 75, 0.08);
+  border: 1px solid rgba(229, 83, 75, 0.35); border-radius: 9px;
+}
+.banner code {
+  display: block; margin-top: 7px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px; color: var(--text); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px;
+  overflow-x: auto; white-space: nowrap;
+}
 
 /* ---------- result ---------- */
 .meta-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

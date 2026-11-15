@@ -56,6 +56,7 @@ export default function Home() {
   const [traces, setTraces] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [booted, setBooted] = useState(false);
   const [error, setError] = useState('');
   const [span, setSpan] = useState(null);
   const fileRef = useRef(null);
@@ -67,8 +68,10 @@ export default function Home() {
     const [h, t, m] = await Promise.allSettled([
       api('/health'), api('/traces'), api('/metrics/summary')]);
     if (h.status === 'fulfilled') setHealth(h.value);
+    else setHealth(null);
     if (t.status === 'fulfilled') setTraces(t.value.traces || t.value);
     if (m.status === 'fulfilled') setMetrics(m.value);
+    setBooted(true);
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -161,6 +164,15 @@ export default function Home() {
             <span className="env"><span className={`dot${health ? '' : ' off'}`} />
               {health ? `${health.model_mode} · ${health.decision_model} router` : 'api offline'}</span>
           </div>
+
+          {booted && health === null && (
+            <div className="banner">
+              <b>Backend unreachable.</b> Every panel below runs off the API on
+              port 8000, so nothing can load until it is up. Start it in a terminal:
+              <code>cd ~/Downloads/"neuroroute 2" &amp;&amp; .venv/bin/python -m uvicorn backend.main:app --port 8000</code>
+              This page reconnects by itself once the API answers.
+            </div>
+          )}
 
           {/* ---------- composer ---------- */}
           <div className="panel" id="console" style={{ padding: 0 }}>
