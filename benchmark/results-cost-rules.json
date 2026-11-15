@@ -1,0 +1,42 @@
+{
+ "note": "Rules-configuration costed run (real Ollama, developer's Mac, 2026-11-15; NR_DECISION_MODEL=rules pinned inline). The 396-token NeuroRoute average is the rules fingerprint (the LLM-router configuration averaged 891). Full per-row data lives in the run's local output file.",
+ "summary": {
+  "queries": 24,
+  "routing_accuracy": "24/24",
+  "avg_latency_ms": {
+   "always_large": 42049.08,
+   "always_medium": 2411.5,
+   "neuroroute": 10874.33
+  },
+  "avg_tokens": {
+   "always_large": 535.42,
+   "always_medium": 199.17,
+   "neuroroute": 396.38
+  },
+  "avg_quality": {
+   "always_large": 0.98,
+   "always_medium": 0.67,
+   "neuroroute": 0.97
+  },
+  "avg_cost_usd": {
+   "always_large": 0.001339,
+   "always_medium": 0.000119,
+   "neuroroute": 0.000513
+  },
+  "quality_per_dollar": {
+   "always_large": 731.9,
+   "always_medium": 5630.3,
+   "neuroroute": 1890.8
+  },
+  "neuroroute_savings_vs_always_large": {
+   "latency_pct": 74.1,
+   "tokens_pct": 26.0,
+   "cost_pct": 61.7
+  },
+  "neuroroute_savings_vs_always_medium": {
+   "latency_pct": -350.9,
+   "tokens_pct": -99.0,
+   "cost_pct": -331.1
+  }
+ }
+}

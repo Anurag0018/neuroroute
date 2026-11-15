@@ -1,142 +1,42 @@
 {
+ "note": "Audio benchmark (real run on the developer's Mac, 2026-11-15; faster-whisper tiny local transcription, rules router pinned inline). 3 voice-note queries over benchmark/assets/voice_note.wav. Two earlier attempts scored 1/3 because NR_DECISION_MODEL=llm was still exported in the benchmark terminal and the audio commands did not pin it - the 1.5B router sent the voice-note queries to rag_medium. Full per-row data lives in the run's local output file.",
  "summary": {
   "queries": 3,
-  "routing_accuracy": "1/3",
+  "routing_accuracy": "3/3",
   "avg_latency_ms": {
-   "always_large": 5970.0,
-   "always_medium": 1735.0,
-   "neuroroute": 5329.0
+   "always_large": 3939.33,
+   "always_medium": 1114.67,
+   "neuroroute": 3544.33
   },
   "avg_tokens": {
-   "always_large": 108.33,
-   "always_medium": 155.0,
-   "neuroroute": 967.67
+   "always_large": 96.67,
+   "always_medium": 144.67,
+   "neuroroute": 237.33
   },
   "avg_quality": {
    "always_large": 0.0,
    "always_medium": 0.0,
-   "neuroroute": 0.0
+   "neuroroute": 0.67
   },
   "avg_cost_usd": {
-   "always_large": 0.000271,
-   "always_medium": 9.3e-05,
-   "neuroroute": 0.000359
+   "always_large": 0.000242,
+   "always_medium": 8.7e-05,
+   "neuroroute": 0.000278
   },
   "quality_per_dollar": {
    "always_large": 0.0,
    "always_medium": 0.0,
-   "neuroroute": 0.0
+   "neuroroute": 2410.1
   },
   "neuroroute_savings_vs_always_large": {
-   "latency_pct": 10.7,
-   "tokens_pct": -793.3,
-   "cost_pct": -32.5
+   "latency_pct": 10.0,
+   "tokens_pct": -145.5,
+   "cost_pct": -14.9
   },
   "neuroroute_savings_vs_always_medium": {
-   "latency_pct": -207.1,
-   "tokens_pct": -524.3,
-   "cost_pct": -286.0
+   "latency_pct": -218.0,
+   "tokens_pct": -64.0,
+   "cost_pct": -219.5
   }
- },
- "rows": [
-  {
-   "id": "aud_1",
-   "level": "audio",
-   "always_large": {
-    "latency_ms": 5262,
-    "tokens": 97,
-    "cost_usd": 0.000243,
-    "quality": 0.0
-   },
-   "always_medium": {
-    "latency_ms": 1429,
-    "tokens": 142,
-    "cost_usd": 8.5e-05,
-    "quality": 0.0
-   },
-   "neuroroute": {
-    "latency_ms": 4986,
-    "tokens": 925,
-    "cost_usd": 0.000271,
-    "quality": 0.0,
-    "strategy": "rag_medium",
-    "initial_strategy": "tool_assisted",
-    "expected_strategy": "audio_grounded",
-    "routing_correct": false,
-    "confidence": 0.619,
-    "confidence_decision": "verify",
-    "evidence_coverage": 0.429,
-    "retrieval_relevance": 0.243,
-    "validation_passed": true,
-    "model_agreement": 0.85,
-    "escalated": true
-   }
-  },
-  {
-   "id": "aud_2",
-   "level": "audio",
-   "always_large": {
-    "latency_ms": 5883,
-    "tokens": 110,
-    "cost_usd": 0.000275,
-    "quality": 0.0
-   },
-   "always_medium": {
-    "latency_ms": 866,
-    "tokens": 206,
-    "cost_usd": 0.000124,
-    "quality": 0.0
-   },
-   "neuroroute": {
-    "latency_ms": 2432,
-    "tokens": 996,
-    "cost_usd": 0.000311,
-    "quality": 0.0,
-    "strategy": "rag_medium",
-    "initial_strategy": "tool_assisted",
-    "expected_strategy": "audio_grounded",
-    "routing_correct": false,
-    "confidence": 0.085,
-    "confidence_decision": "escalate",
-    "evidence_coverage": 0.0,
-    "retrieval_relevance": 0.124,
-    "validation_passed": false,
-    "model_agreement": 0.3,
-    "escalated": true
-   }
-  },
-  {
-   "id": "aud_3",
-   "level": "audio",
-   "always_large": {
-    "latency_ms": 6765,
-    "tokens": 118,
-    "cost_usd": 0.000295,
-    "quality": 0.0
-   },
-   "always_medium": {
-    "latency_ms": 2910,
-    "tokens": 117,
-    "cost_usd": 7e-05,
-    "quality": 0.0
-   },
-   "neuroroute": {
-    "latency_ms": 8569,
-    "tokens": 982,
-    "cost_usd": 0.000495,
-    "quality": 0.0,
-    "strategy": "verified_large",
-    "initial_strategy": "verified_large",
-    "expected_strategy": "verified_large",
-    "routing_correct": true,
-    "confidence": 0.595,
-    "confidence_decision": "escalate",
-    "evidence_coverage": 0.5,
-    "retrieval_relevance": 0.0,
-    "validation_passed": true,
-    "model_agreement": 0.85,
-    "escalated": false
-   }
-  }
- ]
+ }
 }

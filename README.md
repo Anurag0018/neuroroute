@@ -462,13 +462,20 @@ Findings:
   benchmark terminal - detected from the easy-row token
   fingerprint: 573-759 tokens vs the ~212 maximum for a
   rules-mode small-tier call, and confirmed by the 891-token
-  average matching the Phase 2 A/B signature). The rules
-  configuration (440 tokens/query in the tuned run, identical
-  strategies) will price lower; its exact figure awaits a pinned
-  re-run:
-    NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules \
-      python -m benchmark.run_benchmark \
-      --output benchmark/results-cost.json
+  average matching the Phase 2 A/B signature).
+
+Rules configuration, measured (pinned re-run, 2026-11-15;
+benchmark/results-cost-rules.json): routing 24/24, NeuroRoute
+396 tokens/query (the rules fingerprint - no decision call),
+quality 0.97, avg cost $0.000513/query vs always-large
+$0.001339 (-61.7%), latency -74.1% vs always-large,
+quality-per-dollar 1,891 vs 732. Both configurations are now
+measured, and the comparison is the interesting part: the LLM
+router uses 2.2x the tokens of rules (891 vs 396) yet costs
+only ~3% more per query ($0.000528 vs $0.000513), because the
+decision call runs on the cheapest tier. Token overhead is not
+cost overhead when the overhead itself is routed cheaply -
+which is, in miniature, the platform's whole thesis.
 
 ## Tool engine — subsystem 3 completed (2026-11-15)
 
@@ -566,6 +573,21 @@ now implemented as a first-class graph node:
   multipart and tool routing unchanged. 99 tests total. Real
   runs need `ollama pull llava:7b` once.
 
+Measured (real Ollama run, llava:7b, rules router, 2026-11-15;
+benchmark/results-vision.json): routing 3/3, NeuroRoute quality
+0.67 vs 0.50 for both baselines — but latency 25,105ms vs
+5,957ms and $0.001035 vs $0.000307 per query, so quality-per-
+dollar favours the baselines here (647 vs 1,629). Read honestly:
+the vision path is a *capability* path, not an optimisation
+path. The baselines are cheap because they answer blind — they
+cannot see the image at all, and their 0.50 is keyword luck on
+inputs that are unanswerable for them — while NeuroRoute pays
+for an actual perception pass: llava:7b on a MacBook Air is slow
+(~25s/image) and its image tokens inflate the token count
+(1,296 avg). The win is answering at all, at the best quality
+of the three; a smaller vision model (moondream via
+NR_VISION_MODEL) is the obvious lever on the latency.
+
 ## Qdrant vector store + Next.js frontend — project complete (2026-11-15)
 
 The last two named technologies in the architecture document are
@@ -639,6 +661,25 @@ Audio) is implemented exactly like the vision path:
 - Uploads accept audio files in both dashboards; transcribe
   nodes render red in the execution graph. Benchmark:
   benchmark/queries_audio.json routes 3/3 in mock mode. 112 tests.
+
+Measured (real run, faster-whisper tiny, rules router,
+2026-11-15; benchmark/results-audio.json): routing 3/3,
+NeuroRoute quality 0.67 vs 0.00 for both baselines - the
+baselines score literally zero because they cannot hear the
+audio at all; like the vision path, this is a capability path,
+the only one of the three that can answer. Latency 3,544ms
+(faster than always-large's 3,939ms), $0.000278/query. The
+0.67 rather than 1.00 is the tiny whisper model's ceiling: it
+transcribes the content words faithfully ("...cheapest
+reliable path") but mishears the product name ("Narrowed
+Roots"), so answers quoting it miss the routing keyword group;
+NR_WHISPER_MODEL=base is the accuracy lever. (Two earlier
+attempts at this run scored 1/3 for an environment reason, not
+a code one: NR_DECISION_MODEL=llm was still exported in the
+benchmark terminal and the run command did not pin it, so the
+1.5B router sent both voice-note queries to rag_medium.
+Pinning the mode inline - as the vision and cost runs did -
+fixed it. The export trap, third occurrence.)
 
 With this, every row of the architecture's execution table —
 small/medium/large LLMs, embeddings, vector DB, vision, OCR,
