@@ -1,34 +1,150 @@
-# NeuroRoute — Phase 1 MVP
+# NeuroRoute
 
 **Adaptive AI Inference & Orchestration Platform**
 
-A lightweight decision model decides *how* a request should be answered —
-which models, which tools, how much budget — then a validated execution
-graph runs that plan, a confidence engine checks the result, and an
-escalation controller upgrades the path when the result isn't good enough.
-The goal is **quality per unit cost**, proved against fixed-pipeline
-baselines, not just speed.
+Most AI applications send every request to one fixed pipeline —
+usually the biggest model they have. NeuroRoute treats inference
+as a *routing* problem instead: a lightweight decision model
+decides **how** each request should be answered (which model
+tier, whether to retrieve, which tools, whether an image or
+audio file must be perceived first, how much budget it may
+spend), a validator authorises the resulting execution graph,
+and a confidence engine checks the outcome and escalates when
+it isn't good enough. The objective is **quality per unit
+cost**, measured against fixed always-large and always-medium
+baselines on identical datasets — decision and verification
+overhead included in NeuroRoute's own totals.
 
-> Phase 1 scope (this scaffold): three execution paths, rule-based decision
-> model behind the real decision-model interface, custom DAG executor,
-> confidence + verification + escalation, budget enforcement, and full
-> per-request tracing. Everything runs **offline with mock models** — no
-> API keys needed. Later phases swap the insides, not the contracts.
+Everything runs locally (Ollama) with a deterministic mock mode
+for tests and demos; no API keys are required.
 
-## The three Phase 1 paths
+## Headline results (real local models, 2026-11-14/15)
 
-| Path | Strategy | Graph | Used when |
+| Benchmark | Routing | Quality (NR vs large / medium) | Headline |
 | --- | --- | --- | --- |
-| A | `direct_small` | small LLM | Simple, low-risk queries (e.g. "What is Python?") |
-| B | `rag_medium` | retrieve → medium LLM | Retrieval or moderate reasoning needed |
-| C | `verified_large` | [retrieve →] large LLM → verifier | High complexity or high risk |
+| Base, 24 queries | 24/24 | 0.97 vs 1.00 / 0.88 | **-62.6% latency** vs always-large |
+| Base, costed (rules) | 24/24 | 0.97 vs 0.98 / 0.67 | **$0.000513 vs $0.001339 per query (-61.7%)**; quality/$ 1,891 vs 732 |
+| Tools, 4 queries | 4/4 | **1.00** vs 0.50 / 0.25 | Quality/$ **25,641 vs 786**; -94.7% latency |
+| Multipart research, 6 | 6/6 | 0.92 vs 0.92 / 0.92 | -59.9% latency at equal quality |
+| Vision, 3 images | 3/3 | **0.67** vs 0.50 / 0.50 | Capability path: baselines answer blind |
+| Audio, 3 voice notes | 3/3 | **0.67** vs 0.00 / 0.00 | Capability path: baselines cannot hear |
+
+Quality is a transparent keyword-coverage proxy (documented in
+each dataset), not a judge model. Full methodology, per-phase
+results and the failures along the way are in the development
+log below — nothing is cherry-picked; runs that executed in
+the wrong configuration are labelled as such.
+
+## Architecture
+
+```
+                ┌────────────────────────────────────────────┐
+  request ─────►│ 1 · INTELLIGENCE & ROUTING                 │
+  (text, files) │ input analysis → complexity estimate →     │
+                │ decision model (rules or lightweight LLM)  │
+                └──────────────────┬─────────────────────────┘
+                                   │ proposes a plan (never executes)
+                ┌──────────────────▼─────────────────────────┐
+                │ 2 · DYNAMIC EXECUTION PLANNING             │
+                │ graph validator: allowlisted node kinds &  │
+                │ tiers, registered tools only, acyclic,     │
+                │ budget-capped — guardrails outrank models  │
+                └──────────────────┬─────────────────────────┘
+                                   │ authorised DAG
+                ┌──────────────────▼─────────────────────────┐
+                │ 3 · MODEL & TOOL ORCHESTRATION             │
+                │ DAG executor (parallel levels) over:       │
+                │ small/medium/large LLMs · retrieval        │
+                │ (embeddings + vector store) · tools        │
+                │ (calculator / datetime / web search) ·     │
+                │ vision perception · audio transcription    │
+                └──────────────────┬─────────────────────────┘
+                                   │ answer + evidence
+                ┌──────────────────▼─────────────────────────┐
+                │ 4 · CONFIDENCE & VERIFICATION              │
+                │ evidence coverage · validation · retrieval │
+                │ relevance · model agreement → score, then  │
+                │ return / verify / escalate (hard limits)   │
+                └──────────────────┬─────────────────────────┘
+                ┌──────────────────▼─────────────────────────┐
+                │ 5 · BUDGETS        6 · OBSERVABILITY       │
+                │ per-request caps   full trace per request: │
+                │ (tokens, latency,  spans, decision source, │
+                │ cost, calls),      confidence, cost — via  │
+                │ enforced at plan   dashboards, JSON and    │
+                │ time and run time  Prometheus metrics      │
+                └────────────────────────────────────────────┘
+```
+
+**Request lifecycle.** (1) The input analyzer classifies the
+request (modality, risk, document/image/audio attachments).
+(2) The complexity estimator scores it. (3) The decision model
+— deterministic rules by default, or a lightweight LLM behind
+the same interface — selects a strategy or proposes a full
+graph. (4) The validator authorises or rejects the plan; an
+LLM never executes unchecked, and deterministic guardrails
+(high-risk or document requests) outrank any model. (5) The
+executor runs the DAG level by level, in parallel within a
+level. (6) The confidence engine scores the result from
+evidence, not self-report; below threshold, the escalation
+controller retries on a stronger path — at most once, never
+repeating a failed strategy without new evidence, and only
+while the budget allows.
+
+**Execution strategies** (the plan templates the decision
+model chooses between):
+
+| Strategy | Graph | Chosen when |
+| --- | --- | --- |
+| `direct_small` | generate (small) | Simple, low-risk queries |
+| `rag_medium` | retrieve → generate (medium) | Retrieval or moderate reasoning needed |
+| `verified_large` | [retrieve / perceive / transcribe →] generate (large) → verify | High complexity, high risk, or document-grounded |
+| `decomposed_research` | parallel (retrieve → generate medium) per sub-question → synthesize (large) | Multi-part / comparison requests |
+| `tool_assisted` | tool(s) → generate (small/medium) | Arithmetic, dates, live web facts |
+| `vision_grounded` | perceive → generate (medium) | Image attachments |
+| `audio_grounded` | transcribe → generate (medium) | Audio attachments |
+| `llm_dag` | planner-proposed graph, validator-authorised | `NR_PLAN_MODEL=llm`: the LLM designs the graph itself |
+
+Node kinds the validator allows: `retrieve`, `generate`,
+`verify`, `tool`, `perceive`, `transcribe`. Tool nodes must
+name a registered tool; perception/transcription nodes must
+name an attachment; no node may invent a model tier.
+
+**Confidence & verification.** Score = 0.35·evidence coverage
++ 0.25·validation + 0.20·retrieval relevance + 0.20·model
+agreement. Bands: return ≥ 0.85, verify 0.60–0.84, escalate
+< 0.60 (env-tunable; calibration findings in the Phase 4 log).
+Verification is evidence- and rule-based — never a second
+LLM's opinion of the first.
+
+**Safety model.** Plans are validated before anything runs
+(allowlist, acyclicity, budget estimate); budgets are
+re-checked after every attempt at run time; free-form code
+execution is deliberately absent — the calculator evaluates an
+AST allowlist instead. Optional API-key auth guards the HTTP
+interface.
+
+**Stack (as built).** FastAPI modular monolith · custom async
+DAG executor · Ollama tiers (Qwen 2.5 1.5B / Llama 3.2 3B /
+Qwen 2.5 7B, llava for vision) · hashing embeddings by default,
+sentence-transformers when installed · in-memory vector store
+by default, Qdrant when configured · faster-whisper for audio
+· Next.js console + built-in observability dashboard ·
+Prometheus metrics endpoint · Docker Compose · MCP server
+interface. Substitutions vs the original design sketch are
+documented in the log (custom DAG for LangGraph, AST
+calculator for free-form Python tools, vision-model
+transcription for a separate OCR engine).
+
+**Interfaces.** REST API (below) for applications; an **MCP
+server** (`mcp_server.py`) exposing the same pipeline and tool
+registry to AI clients; two dashboards (built-in at
+`/dashboard`, Next.js at `frontend/`).
 
 ## Quick start
 
-> Requires Python 3.10+ (recommended). Python 3.9 also works — the
-> `eval_type_backport` dependency in requirements.txt covers the older
-> typing syntax — but recreate the venv with `python3.11` / `python3.12`
-> if you have it.
+> Python 3.10+ recommended (3.9 works via the
+> `eval_type_backport` dependency in requirements.txt).
 
 ```bash
 cd neuroroute
@@ -38,131 +154,93 @@ uvicorn backend.main:app --reload
 ```
 
 - API docs: http://localhost:8000/docs
-- Live dashboard: http://localhost:8000/dashboard
-- Try it:
+- Dashboard: http://localhost:8000/dashboard
 
 ```bash
 curl -X POST localhost:8000/query -H 'Content-Type: application/json' \
   -d '{"query": "What is Python?"}'
-
-curl -X POST localhost:8000/query -H 'Content-Type: application/json' \
-  -d '{"query": "Research how retrieval augmented generation improves factual accuracy"}'
 
 # Decision only, nothing executes:
 curl -X POST localhost:8000/route/preview -H 'Content-Type: application/json' \
   -d '{"query": "Analyse this research paper", "attachments": ["paper.pdf"]}'
 ```
 
-## Using real models (Ollama)
+**Real models (Ollama).** Install Ollama, pull the tiers
+(`ollama pull qwen2.5:1.5b llama3.2:3b qwen2.5:7b`, plus
+`llava:7b` for vision), then start with `NR_MODEL_MODE=ollama`.
+Key configuration (all optional, mock/rules defaults):
 
-By default NeuroRoute uses a deterministic mock adapter (no keys, no
-network). To run real local models:
+| Variable | Effect |
+| --- | --- |
+| `NR_MODEL_MODE` | `mock` (default) or `ollama` |
+| `NR_DECISION_MODEL` | `rules` (default) or `llm` router |
+| `NR_PLAN_MODEL` | `strategy` (default) or `llm` DAG planner |
+| `NR_EMBEDDINGS` | `hash` forces hashing; MiniLM auto-used when installed |
+| `NR_VECTOR_STORE` | `memory` (default) or `qdrant` |
+| `NR_VISION_MODEL` | default `llava:7b` |
+| `NR_AUDIO_MODE` / `NR_WHISPER_MODEL` | `auto`/`whisper`/`mock`; default `tiny` |
+| `NR_API_KEY` | when set, non-public routes require it |
+| `NR_PRICE_<TIER>_PER_1K` | override the modelled rate card |
 
-1. Install Ollama from https://ollama.com and make sure it is running.
-2. Pull the three tier models (one-time download, ~8 GB total):
+> Environment variables live only in the terminal that sets
+> them — the benchmark log below contains three separate runs
+> that silently executed in the wrong configuration because of
+> this. Pin modes inline in benchmark commands.
 
-```bash
-ollama pull qwen2.5:1.5b    # small
-ollama pull llama3.2:3b     # medium + verifier
-ollama pull qwen2.5:7b      # large (slow on a MacBook Air — see note)
-```
+## Benchmarks
 
-3. Start NeuroRoute in Ollama mode, in the same terminal:
-
-```bash
-export NR_MODEL_MODE=ollama
-uvicorn backend.main:app --reload
-```
-
-Check `GET /health` — it should report `"model_mode": "ollama"`.
-Model names are overridable: `NR_OLLAMA_SMALL`, `NR_OLLAMA_MEDIUM`,
-`NR_OLLAMA_LARGE`, `NR_OLLAMA_VERIFIER`, `NR_OLLAMA_URL`.
-
-> MacBook Air note: the 7B large model works but is slow. For day-to-day
-> development set `NR_OLLAMA_LARGE=llama3.2:3b` and switch back to the
-> 7B for the final demo/benchmark. Local inference reports cost $0 —
-> the routing still saves real time and tokens, which the traces show.
-
-## Benchmark
-
-Fixed dataset of 24 queries (8 easy / 8 medium / 8 hard) in
-`benchmark/queries.json`, compared against two fixed pipelines on the
-same queries: always-large, and always-medium+RAG. NeuroRoute's totals
-include its own routing/verification overhead.
+Datasets in `benchmark/` (base 24, multipart 6, tools 4,
+vision 3, audio 3), each run against always-large and
+always-medium fixed pipelines on identical inputs:
 
 ```bash
-python -m benchmark.run_benchmark                  # mock models: checks the harness only
-NR_MODEL_MODE=ollama python -m benchmark.run_benchmark --limit 9   # real numbers
+NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules \
+  python -m benchmark.run_benchmark --output benchmark/results.json
 ```
 
-Output: per-query routing/latency/tokens/quality plus a summary with
-routing accuracy and % savings vs each baseline, written to
-`benchmark/results.json`. Quality is a transparent keyword-coverage
-proxy (see the notes in queries.json), not a judge model. Mock-mode
-numbers are meaningless by design — only the Ollama run produces
-reportable results.
-
-Every `/query` response includes the answer **plus** the routing rationale,
-the execution graph with per-node latency, the confidence breakdown,
-escalation history, and actual tokens / cost / latency. Traces are kept at
-`/traces`, aggregate stats at `/metrics/summary`.
+Routing accuracy judges the *initial* strategy (an escalation
+is the safety net working, not a miss). Mock-mode runs check
+the harness only; their numbers are meaningless by design.
 
 ## Tests
 
 ```bash
-pytest -q
+pytest -q   # 118 tests
 ```
 
-Covers routing decisions, graph validation (allowlist, cycles, missing
-dependencies, budget rejection), the end-to-end pipeline, and escalation
-when retrieval finds no evidence.
+Routing, graph validation, the full pipeline, escalation,
+retrieval, tools, multimodal paths, auth, the MCP protocol
+round-trip, and a real embedded-Qdrant round-trip. Tests that
+need optional packages (Qdrant, faster-whisper, MCP SDK) skip
+when those aren't installed.
 
-## How it maps to the full architecture
+## Project structure
 
-| Architecture subsystem | Phase 1 module |
-| --- | --- |
-| Input Analyzer | `backend/intelligence/input_analyzer.py` |
-| Complexity Estimator | `backend/intelligence/complexity_estimator.py` |
-| Decision-Making Model | `backend/intelligence/decision_model.py` (rules now, Jev/Laya later — same `propose_plan()` contract) |
-| Routing Policy | `backend/intelligence/routing_policy.py` |
-| Graph Generator / Validator | `backend/planning/` — the validator is the safety boundary: allowlisted node kinds, registered tiers, acyclic, within budget. An LLM proposes; it never executes unchecked. |
-| Graph Orchestrator | `backend/execution/graph_executor.py` (topological levels, concurrent within a level) |
-| Model Registry / Adapters | `backend/models/` (mock adapter now; real adapters implement `generate()`) |
-| Retrieval Engine | `backend/retrieval/` (in-memory overlap scoring now; Qdrant behind the same `search()` contract) |
-| Confidence Estimator | `backend/validation/confidence_estimator.py` |
-| Verification Engine | `backend/validation/answer_verifier.py` (evidence coverage, not a second opinion) |
-| Escalation Controller | `backend/validation/escalation_controller.py` (max escalations, budget-checked, never repeats a failed strategy) |
-| Budget Manager | `backend/optimization/budget_manager.py` (estimated vs actual kept separate) |
-| Observability | `backend/observability/execution_tracer.py` + dashboard |
+```
+backend/
+  intelligence/   analysis, complexity, decision models, routing policy
+  planning/       graph generator, validator, decomposer, LLM DAG planner
+  execution/      DAG executor, node executor, tools, perception, transcription
+  models/         tier registry + rate card, mock/Ollama adapters
+  retrieval/      embeddings, document loader, vector stores, retrieval service
+  validation/     verifier, confidence estimator, escalation controller
+  optimization/   budget manager
+  observability/  execution tracer (+ Prometheus exposition)
+  main.py         FastAPI app (REST, dashboards, metrics, auth)
+frontend/         Next.js console (proxies /api to FastAPI)
+mcp_server.py     MCP interface over the same pipeline
+benchmark/        datasets, runner, calibration + retrieval A/B tools
+tests/            pytest suite
+```
 
-This is a **modular monolith** — one FastAPI app, modules matching the
-service boundaries in the full architecture. Split into services only when
-a module actually needs independent scaling.
+---
 
-## Key design decisions (kept from the architecture)
+## Development log — measured results, phase by phase
 
-1. **The decision model is lightweight.** Routing must cost far less than
-   the inference it saves — and its cost is counted in every benchmark.
-2. **Execution is deterministic wherever possible.** Plans are validated
-   against an allowlist and a budget before anything runs.
-3. **Confidence is measured, not self-reported.** Evidence coverage,
-   validation, retrieval relevance and verifier agreement are combined;
-   thresholds (return ≥ 0.85, verify 0.60–0.84, escalate < 0.60) are
-   starting values to calibrate against measured correctness.
-4. **Escalation has hard limits** — max retries, max model calls, max
-   tokens, max cost, and no repeating the same failed strategy.
-
-## Phase 2 hooks
-
-- Replace `RuleBasedDecisionModel` with Jev / Laya structured output
-  (`backend/intelligence/decision_model.py`).
-- Implement `generate()` in `backend/models/llm_adapter.py` against Ollama /
-  vLLM / cloud APIs and put real measured costs + latencies in the registry.
-- Swap the retrieval corpus for embeddings + Qdrant behind `search()`.
-- Add the benchmark harness: Baseline A (always large), Baseline B (always
-  medium) vs NeuroRoute on one fixed mixed-difficulty dataset, reporting
-  accuracy / latency / cost distributions — including decision + verifier
-  overhead in NeuroRoute's totals.
+Everything below is the chronological build log with the real
+numbers as they were measured, including the tuning, the
+calibration study, the wrong-configuration runs and what they
+taught. The headline table above is drawn from these sections.
 
 ## Post-benchmark tuning (v1.1, 2026-11-14)
 
