@@ -273,3 +273,30 @@ Plans are no longer only three fixed templates:
 Tests: 48 passing (13 new in tests/test_phase3.py, stub adapters).
 Multipart benchmark:
     python -m benchmark.run_benchmark --dataset benchmark/queries_multipart.json --output benchmark/results_multipart.json
+
+## Retrieval upgrade — real documents + embeddings (2026-11-15)
+
+Retrieval is no longer a fixed toy corpus scored by hand:
+
+- **Embeddings** (backend/retrieval/embeddings.py): every document
+  and query becomes a dense vector; relevance is cosine similarity.
+  Default is a dependency-free hashing embedder (deterministic,
+  lexical). Install `sentence-transformers` and real semantic
+  embeddings (all-MiniLM-L6-v2) are used automatically;
+  NR_EMBEDDINGS=hash|sentence-transformers forces a choice.
+- **Real ingestion**: POST /documents (or the dashboard's upload
+  button) accepts .pdf (PyMuPDF), .txt and .md files. Documents are
+  chunked (paragraph-aware, ~1200 chars with overlap), embedded and
+  indexed in memory — the in-memory vector index is the seam where
+  Qdrant slots in later; nothing upstream changed.
+- **Scoped retrieval**: a document plan's retrieve node carries the
+  attachment names, and search() restricts itself to those ingested
+  sources — a question about an uploaded report now reads *that
+  report*. Filename-only attachments (as in the benchmark) fall back
+  to the full index, and unscoped search keeps the strict relevance
+  threshold so unanswerable queries still escalate.
+- GET /documents lists ingested sources and chunk counts; /health
+  reports the active embedder.
+
+Tests: 54 passing (6 new in tests/test_retrieval_upgrade.py,
+including a generated-PDF ingestion test).

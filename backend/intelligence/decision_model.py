@@ -61,10 +61,12 @@ _DECISION_PROMPT = """You are the routing planner of an AI inference system. You
 Strategies (cheapest first):
 - direct_small: small model only. Simple factual or short questions, no external knowledge needed.
 - rag_medium: retrieve documents, medium model answers from them. Explaining or researching a topic, however technical.
+- decomposed_research: for a request with 2+ distinct sub-questions — each part is answered in parallel and the answers are synthesised. Use ONLY when the request genuinely asks several things at once.
 - verified_large: large model + verification, ~5x the cost of rag_medium. ONLY for: document inputs, high-risk topics, or deep multi-step analysis.
 
 Rules:
 - Explaining a concept is rag_medium, never verified_large by itself.
+- A single question, even a comparison of two things, is rag_medium — decomposed_research needs multiple distinct questions or parts.
 - If torn between two strategies, choose the CHEAPER one: a later confidence check can escalate if the answer is weak. Over-choosing verified_large wastes most of the budget.
 - verified_large requires a concrete reason (document, risk, or deep analysis), not "to be safe".
 

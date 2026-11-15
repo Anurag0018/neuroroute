@@ -51,7 +51,14 @@ def build_plan(strategy: str, analysis: InputAnalysis,
 
     elif strategy == "verified_large":
         if complexity.retrieval_required or analysis.modality == "document":
-            nodes = [PlanNode("retrieve", "retrieve"),
+            # A document request retrieves from the named documents
+            # themselves when they have been ingested (the retrieval
+            # service falls back to the full index otherwise).
+            retrieve_params = ({"sources": list(analysis.attachments)}
+                               if analysis.modality == "document"
+                               and analysis.attachments else {})
+            nodes = [PlanNode("retrieve", "retrieve", None, [],
+                              retrieve_params),
                      PlanNode("generate", "generate", "large", ["retrieve"]),
                      PlanNode("verify", "verify", "verifier", ["generate"])]
         else:

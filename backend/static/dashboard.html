@@ -17,16 +17,33 @@
 </head>
 <body>
 <h1>🧠 NeuroRoute — Live Execution Dashboard</h1>
-<div class="sub">Phase 1 placeholder for the Next.js frontend. Watch routing, the execution graph, confidence and cost per request.</div>
+<div class="sub">Watch routing, the execution graph, confidence and cost per request. Upload a document (PDF/TXT/MD) and it becomes retrievable — queries then attach it automatically.</div>
 <textarea id="q">Research how retrieval augmented generation improves factual accuracy</textarea>
 <br><button onclick="run()">Run request</button>
+<span style="margin-left:14px">
+  <input type="file" id="doc" accept=".pdf,.txt,.md">
+  <button onclick="upload()">Upload document</button>
+  <span id="docStatus" class="muted"></span>
+</span>
 <div id="out"></div>
 <script>
+let attached = null;
+async function upload() {
+  const f = document.getElementById('doc').files[0];
+  const st = document.getElementById('docStatus');
+  if (!f) { st.textContent = 'Choose a file first.'; return; }
+  st.textContent = 'Ingesting…';
+  const fd = new FormData(); fd.append('file', f);
+  const res = await fetch('/documents', {method:'POST', body: fd});
+  const t = await res.json();
+  if (res.ok) { attached = t.source; st.textContent = `Ingested ${t.source}: ${t.chunks_ingested} chunk(s). It will be attached to your queries.`; }
+  else { st.textContent = 'Upload failed: ' + (t.detail || res.status); }
+}
 async function run() {
   const out = document.getElementById('out');
   out.innerHTML = '<div class="card">Running…</div>';
   const res = await fetch('/query', {method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({query: document.getElementById('q').value})});
+    body: JSON.stringify({query: document.getElementById('q').value, attachments: attached ? [attached] : []})});
   const t = await res.json();
   const nodes = t.execution_graph.map(n =>
     `<span class="chip"><b>${n.node_id}</b> ${n.kind}${n.model_tier ? ' · ' + n.model_tier : ''} · ${n.status} · ${n.latency_ms}ms</span>`).join(' → ');

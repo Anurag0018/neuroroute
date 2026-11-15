@@ -1,0 +1,3 @@
+Quarterly revenue grew 18 percent as subscription income expanded across all regions. Operating costs fell because inference spend was routed to cheaper models. The Zephyr protocol cut p95 latency substantially during the trial period.
+
+Risks remain around supplier concentration and currency exposure, and the board recommends diversifying vendors next quarter.

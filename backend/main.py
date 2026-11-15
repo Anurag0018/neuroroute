@@ -11,7 +11,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -27,6 +27,10 @@ app = FastAPI(title="NeuroRoute", version="0.1.0",
 pipeline = NeuroRoutePipeline()
 _decision_model = RuleBasedDecisionModel()
 _STATIC = Path(__file__).parent / "static"
+_UPLOADS = Path(__file__).resolve().parent.parent / "data" / "uploads"
+# The retrieval service the pipeline actually queries; uploads are
+# ingested into this same index.
+retrieval = pipeline.executor.node_executor.retrieval
 
 
 class BudgetIn(BaseModel):
@@ -52,7 +56,9 @@ def health():
     return {"status": "ok", "service": "neuroroute", "phase": 3,
             "model_mode": os.environ.get("NR_MODEL_MODE", "mock"),
             "decision_model": os.environ.get("NR_DECISION_MODEL", "rules"),
-            "plan_model": os.environ.get("NR_PLAN_MODEL", "strategy")}
+            "plan_model": os.environ.get("NR_PLAN_MODEL", "strategy"),
+            "embeddings": retrieval.embedder.name,
+            "documents": retrieval.documents()}
 
 
 @app.get("/models")
@@ -74,6 +80,28 @@ def route_preview(body: QueryIn):
         raise HTTPException(status_code=422, detail=f"Plan rejected: {e}")
     return {"analysis": asdict(analysis), "complexity": asdict(complexity),
             "plan": asdict(plan)}
+
+
+@app.post("/documents")
+async def upload_document(file: UploadFile = File(...)):
+    """Ingest a real document (PDF/TXT/MD): it is chunked, embedded
+    and added to the retrieval index under its filename. Queries
+    that name the file in `attachments` then retrieve from it."""
+    _UPLOADS.mkdir(parents=True, exist_ok=True)
+    dest = _UPLOADS / Path(file.filename).name
+    dest.write_bytes(await file.read())
+    try:
+        chunks = retrieval.ingest_file(dest)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"source": dest.name, "chunks_ingested": chunks,
+            "documents": retrieval.documents()}
+
+
+@app.get("/documents")
+def list_documents():
+    return {"embeddings": retrieval.embedder.name,
+            "documents": retrieval.documents()}
 
 
 @app.post("/query")

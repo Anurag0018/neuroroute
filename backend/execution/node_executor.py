@@ -18,8 +18,11 @@ class NodeExecutor:
                 prior: dict[str, NodeResult],
                 use_llm_verifier: bool = True) -> NodeResult:
         if node.kind == "retrieve":
-            # A decomposed branch retrieves for its own sub-question.
-            docs = self.retrieval.search(node.params.get("sub_question", query))
+            # A decomposed branch retrieves for its own sub-question;
+            # a document plan scopes retrieval to its named sources.
+            docs = self.retrieval.search(
+                node.params.get("sub_question", query),
+                sources=node.params.get("sources"))
             return NodeResult(node.node_id, node.kind,
                               latency_ms=NODE_LATENCY_MS["retrieve"],
                               cost_usd=NODE_COST_USD["retrieve"], output=docs)
