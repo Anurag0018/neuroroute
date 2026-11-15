@@ -4,4 +4,6 @@ __pycache__/
 .env
 benchmark/results.json
 .DS_Store
-benchmark/results_multipart.json
+data/
+frontend/node_modules/
+frontend/.next/

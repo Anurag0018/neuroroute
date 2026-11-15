@@ -5,9 +5,10 @@ cosine behind the `search()` contract. This upgrade keeps the
 contract and replaces the internals:
 
 - Documents (seed corpus + anything ingested at runtime) are chunked
-  and embedded (backend/retrieval/embeddings.py); the index is an
-  in-memory vector store — the seam where Qdrant slots in later
-  without upstream changes.
+  and embedded (backend/retrieval/embeddings.py) and held in a
+  vector store behind this seam (backend/retrieval/vector_store.py):
+  in-memory by default, Qdrant with NR_VECTOR_STORE=qdrant. The
+  scoping/threshold policy below is store-independent.
 - Real files enter via ingest_file()/ingest_text() (PDF via PyMuPDF,
   .txt/.md natively), chunked by document_loader.
 - search(..., sources=[...]) scopes retrieval to named ingested
@@ -22,7 +23,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from backend.retrieval.document_loader import chunk_text, extract_text
-from backend.retrieval.embeddings import cosine, default_embedder
+from backend.retrieval.embeddings import default_embedder
+from backend.retrieval.vector_store import default_vector_store
 
 _SEED_CORPUS = [
     {"id": "doc_neuroroute", "title": "NeuroRoute design notes",
@@ -73,26 +75,19 @@ _SEED_CORPUS = [
 
 
 class RetrievalService:
-    def __init__(self, corpus: list[dict] | None = None, embedder=None):
+    def __init__(self, corpus: list[dict] | None = None, embedder=None,
+                 store=None):
         self.embedder = embedder or default_embedder()
+        self.store = store or default_vector_store(self.embedder)
         seed = corpus if corpus is not None else _SEED_CORPUS
-        self._docs: list[dict] = [
-            {**d, "source": d.get("source", "seed")} for d in seed]
-        self._vectors: list[list[float]] = []
-        self._reindex()
-
-    # ---------- index ----------
-
-    def _reindex(self) -> None:
-        texts = [d["title"] + " " + d["text"] for d in self._docs]
-        self._vectors = self.embedder.embed(texts) if texts else []
+        docs = [{**d, "source": d.get("source", "seed")} for d in seed]
+        vectors = self.embedder.embed(
+            [d["title"] + " " + d["text"] for d in docs]) if docs else []
+        self.store.reset_with(docs, vectors)
 
     def documents(self) -> dict:
         """source name -> chunk count, for the API/dashboard."""
-        counts: dict[str, int] = {}
-        for d in self._docs:
-            counts[d["source"]] = counts.get(d["source"], 0) + 1
-        return counts
+        return self.store.documents()
 
     # ---------- ingestion ----------
 
@@ -100,13 +95,13 @@ class RetrievalService:
         """Chunk + embed a document under `source` (re-ingesting the
         same source replaces its previous chunks). Returns chunks."""
         chunks = chunk_text(text)
-        self._docs = [d for d in self._docs if d["source"] != source]
-        for i, chunk in enumerate(chunks):
-            self._docs.append({
-                "id": f"{source}::chunk{i}",
-                "title": f"{source} (part {i + 1})",
-                "text": chunk, "source": source})
-        self._reindex()
+        docs = [{"id": f"{source}::chunk{i}",
+                 "title": f"{source} (part {i + 1})",
+                 "text": chunk, "source": source}
+                for i, chunk in enumerate(chunks)]
+        vectors = self.embedder.embed(
+            [d["title"] + " " + d["text"] for d in docs]) if docs else []
+        self.store.replace_source(source, docs, vectors)
         return len(chunks)
 
     def ingest_file(self, path: str | Path) -> int:
@@ -117,19 +112,11 @@ class RetrievalService:
 
     def search(self, query: str, k: int = 3, min_relevance: float = 0.08,
                sources: list[str] | None = None) -> list[dict]:
-        pool = list(zip(self._docs, self._vectors))
-        scoped_active = False
-        if sources:
-            scoped = [(d, v) for d, v in pool if d["source"] in sources]
-            if scoped:  # unknown sources fall back to the whole index
-                pool = scoped
-                scoped_active = True
+        scoped_active = bool(sources) and any(
+            self.store.has_source(s) for s in sources)
         qv = self.embedder.embed([query])[0]
-        scored = [{"id": d["id"], "title": d["title"], "text": d["text"],
-                   "source": d["source"],
-                   "relevance": round(cosine(qv, vec), 3)}
-                  for d, vec in pool]
-        scored.sort(key=lambda d: d["relevance"], reverse=True)
+        scored = self.store.scored(
+            qv, sources if scoped_active else None, limit=max(50, k))
         hits = [d for d in scored[:k] if d["relevance"] >= min_relevance]
         if scoped_active and not hits and scored and scored[0]["relevance"] > 0:
             # The user pointed at this document explicitly: return its

@@ -565,3 +565,41 @@ now implemented as a first-class graph node:
   and an invoice screenshot) routes 3/3 in mock mode; base,
   multipart and tool routing unchanged. 99 tests total. Real
   runs need `ollama pull llava:7b` once.
+
+## Qdrant vector store + Next.js frontend — project complete (2026-11-15)
+
+The last two named technologies in the architecture document are
+now in place, both behind seams the design already had:
+
+- **Qdrant** (retrieval store): the RetrievalService policy
+  (scoping, thresholds, unknown-source fallback) is unchanged and
+  store-independent; the store itself is selected by
+  NR_VECTOR_STORE — `memory` (default, zero dependencies) or
+  `qdrant`. Qdrant runs in embedded local mode under data/qdrant
+  (no server needed) or against NR_QDRANT_URL, with cosine
+  distance so scores match the in-memory store's. Needs the
+  optional `qdrant-client` package. Verified by a round-trip test
+  against a real embedded Qdrant: seed search parity, scoped
+  search, replace-on-reingest, and the unknown-source fallback all
+  behave identically to the in-memory store. /health reports the
+  active store.
+- **Next.js frontend** (frontend/): the product UI from the
+  architecture's stack section — a console over the same FastAPI
+  API: health chips (mode, router, planner, embeddings, vector
+  store, vision model), query + document/image upload with
+  auto-attach, the answer with strategy/confidence/cost, the
+  execution span waterfall, aggregate metrics and a clickable
+  recent-traces list. It proxies /api/* to the backend via Next
+  rewrites (no CORS), and is verified end-to-end against the
+  running API. The built-in /dashboard remains the
+  zero-dependency fallback. Run it with:
+
+      cd frontend && npm install && npm run dev   # http://localhost:3000
+
+With this, every subsystem and technology named in the
+architecture document is implemented: routing intelligence, LLM
+decision model, dynamic DAG planning with a validating backend,
+model/tool/vision orchestration, evidence-based confidence with
+calibrated thresholds, a priced budget system, HoneyHive-style
+observability, and benchmarked quality-per-unit-cost against
+always-large and always-medium baselines. 103 tests.

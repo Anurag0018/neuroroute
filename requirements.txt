@@ -11,3 +11,4 @@ python-multipart>=0.0.9
 # used automatically (override with NR_EMBEDDINGS=hash). Heavy
 # (pulls in torch) — the default hashing embedder needs nothing.
 # sentence-transformers>=2.2
+# qdrant-client>=1.9  # only needed for NR_VECTOR_STORE=qdrant

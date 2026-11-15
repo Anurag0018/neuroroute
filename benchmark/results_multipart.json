@@ -1,0 +1,169 @@
+{
+ "summary": {
+  "queries": 6,
+  "routing_accuracy": "6/6",
+  "avg_latency_ms": {
+   "always_large": 63711.17,
+   "always_medium": 4650.67,
+   "neuroroute": 25564.5
+  },
+  "avg_tokens": {
+   "always_large": 674.0,
+   "always_medium": 213.5,
+   "neuroroute": 807.33
+  },
+  "avg_quality": {
+   "always_large": 0.92,
+   "always_medium": 0.92,
+   "neuroroute": 0.92
+  },
+  "neuroroute_savings_vs_always_large": {
+   "latency_pct": 59.9,
+   "tokens_pct": -19.8
+  },
+  "neuroroute_savings_vs_always_medium": {
+   "latency_pct": -449.7,
+   "tokens_pct": -278.1
+  }
+ },
+ "rows": [
+  {
+   "id": "mp_1",
+   "level": "multipart",
+   "always_large": {
+    "latency_ms": 27925,
+    "tokens": 758,
+    "quality": 1.0
+   },
+   "always_medium": {
+    "latency_ms": 2888,
+    "tokens": 217,
+    "quality": 1.0
+   },
+   "neuroroute": {
+    "latency_ms": 3575,
+    "tokens": 490,
+    "quality": 1.0,
+    "strategy": "decomposed_research",
+    "initial_strategy": "decomposed_research",
+    "expected_strategy": "decomposed_research",
+    "routing_correct": true
+   }
+  },
+  {
+   "id": "mp_2",
+   "level": "multipart",
+   "always_large": {
+    "latency_ms": 24172,
+    "tokens": 638,
+    "quality": 1.0
+   },
+   "always_medium": {
+    "latency_ms": 1299,
+    "tokens": 223,
+    "quality": 1.0
+   },
+   "neuroroute": {
+    "latency_ms": 4934,
+    "tokens": 587,
+    "quality": 1.0,
+    "strategy": "decomposed_research",
+    "initial_strategy": "decomposed_research",
+    "expected_strategy": "decomposed_research",
+    "routing_correct": true
+   }
+  },
+  {
+   "id": "mp_3",
+   "level": "multipart",
+   "always_large": {
+    "latency_ms": 113763,
+    "tokens": 810,
+    "quality": 1.0
+   },
+   "always_medium": {
+    "latency_ms": 5437,
+    "tokens": 275,
+    "quality": 1.0
+   },
+   "neuroroute": {
+    "latency_ms": 11102,
+    "tokens": 553,
+    "quality": 1.0,
+    "strategy": "decomposed_research",
+    "initial_strategy": "decomposed_research",
+    "expected_strategy": "decomposed_research",
+    "routing_correct": true
+   }
+  },
+  {
+   "id": "mp_4",
+   "level": "multipart",
+   "always_large": {
+    "latency_ms": 69246,
+    "tokens": 564,
+    "quality": 1.0
+   },
+   "always_medium": {
+    "latency_ms": 4630,
+    "tokens": 186,
+    "quality": 1.0
+   },
+   "neuroroute": {
+    "latency_ms": 10879,
+    "tokens": 452,
+    "quality": 1.0,
+    "strategy": "decomposed_research",
+    "initial_strategy": "decomposed_research",
+    "expected_strategy": "decomposed_research",
+    "routing_correct": true
+   }
+  },
+  {
+   "id": "mp_5",
+   "level": "multipart",
+   "always_large": {
+    "latency_ms": 84430,
+    "tokens": 701,
+    "quality": 0.5
+   },
+   "always_medium": {
+    "latency_ms": 9570,
+    "tokens": 205,
+    "quality": 0.5
+   },
+   "neuroroute": {
+    "latency_ms": 88083,
+    "tokens": 1544,
+    "quality": 0.5,
+    "strategy": "verified_large",
+    "initial_strategy": "verified_large",
+    "expected_strategy": "verified_large",
+    "routing_correct": true
+   }
+  },
+  {
+   "id": "mp_6",
+   "level": "multipart",
+   "always_large": {
+    "latency_ms": 62731,
+    "tokens": 573,
+    "quality": 1.0
+   },
+   "always_medium": {
+    "latency_ms": 4080,
+    "tokens": 175,
+    "quality": 1.0
+   },
+   "neuroroute": {
+    "latency_ms": 34814,
+    "tokens": 1218,
+    "quality": 1.0,
+    "strategy": "decomposed_research",
+    "initial_strategy": "decomposed_research",
+    "expected_strategy": "decomposed_research",
+    "routing_correct": true
+   }
+  }
+ ]
+}

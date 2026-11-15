@@ -58,6 +58,7 @@ def health():
             "decision_model": os.environ.get("NR_DECISION_MODEL", "rules"),
             "plan_model": os.environ.get("NR_PLAN_MODEL", "strategy"),
             "embeddings": retrieval.embedder.name,
+            "vector_store": retrieval.store.name,
             "vision_model": os.environ.get("NR_VISION_MODEL", "llava:7b"),
             "prices_per_1k_usd": rate_card(),
             "documents": retrieval.documents()}
