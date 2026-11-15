@@ -342,3 +342,51 @@ Findings:
   keyword-shaped traffic; semantic embeddings earn their heavy
   install (torch) exactly when users phrase things their own way.
   Full per-probe data: benchmark/retrieval_ab_results.json.
+
+## Phase 4 — Confidence calibration (2026-11-15)
+
+Method: a fresh 24-query Ollama run whose rows record the final
+confidence score next to measured quality (benchmark/calibrate.py
+buckets answers by band and sweeps alternative return thresholds).
+Full data: benchmark/results-calibration.json.
+
+Band quality under the current policy (return >= 0.85, escalate < 0.60):
+
+| Band | n | Mean quality | Min quality |
+|---|---|---|---|
+| return | 11 | 0.97 | 0.667 |
+| verify | 7 | 1.00 | 1.00 |
+| escalate | 6 | 0.945 | 0.667 |
+
+Findings:
+- Zero escalations occurred and routing was 24/24 — the pipeline
+  behaved; what calibration exposed was a measurement problem.
+- The bands do NOT separate quality, because confidence is
+  confounded by strategy: the escalate band is mostly
+  verified_large rows. Hard queries averaged quality 0.958 at mean
+  confidence 0.401; hard_1 produced a perfect answer scored 0.095.
+- Root cause: the confidence formula consumes raw retrieval
+  cosine, whose scale is embedder-dependent. MiniLM relevance runs
+  lower than hashing relevance on this corpus, so switching
+  embedders silently dragged hard-path confidence down. The
+  estimator did not get worse; its ruler changed units.
+- One genuinely over-confident row: med_2 (confidence 0.879,
+  quality 0.667).
+- The sweep's mechanical recommendation (loosen return to 0.70)
+  was NOT adopted: it would mask the relevance-scaling issue
+  instead of fixing it. Thresholds stay 0.85 / 0.60 and are now
+  env-overridable (NR_RETURN_THRESHOLD / NR_ESCALATE_THRESHOLD)
+  so a future, cleaner calibration can be applied without a code
+  change. Recorded next fix: normalise the relevance term per
+  embedder before it enters the confidence formula, and log
+  pre-escalation confidence for an uncontaminated calibration set.
+- Run configuration note: this run executed with the LLM decision
+  model active (NR_DECISION_MODEL=llm was still exported in the
+  benchmark terminal — found via the run's uniform ~+450
+  tokens/query decision overhead and confirmed by env check).
+  NeuroRoute averaged 910 tokens vs 440 in the rules-router tuned
+  run, at latency 11,233ms (-74.6% vs an always-large baseline
+  that ran slow this session, 44,252ms). The confidence/quality
+  conclusions are unaffected — the LLM router matched the expected
+  strategy 24/24 — but the token figures belong to the LLM-router
+  configuration and are not comparable to the rules run.
