@@ -643,3 +643,37 @@ Audio) is implemented exactly like the vision path:
 With this, every row of the architecture's execution table —
 small/medium/large LLMs, embeddings, vector DB, vision, OCR,
 audio, tools, verification — is implemented and tested.
+
+## Infrastructure pack (2026-11-15)
+
+The deployment rows of the architecture's stack table:
+
+- **API-key authentication** (section 1, API gateway): set
+  NR_API_KEY and every non-public route requires it via the
+  X-API-Key header or a Bearer token; unset = open (the local
+  default). Public routes stay public: /, /health, /dashboard,
+  /docs. The key is read per request (rotation without restart),
+  /health reports `auth_enabled`, and the built-in dashboard has
+  a key field (stored in localStorage) that sends it on every
+  call. **Session management**: /query accepts a session_id,
+  traces record it, and GET /traces?session_id=... filters by it.
+- **Prometheus metrics**: GET /metrics/prometheus serves the
+  exposition format — per-strategy request counters, token and
+  cost totals, escalation counter/rate, mean latency — derived
+  from the same traces the dashboards use, ready for Prometheus
+  scraping and Grafana charting.
+- **Docker**: Dockerfile for the API, frontend/Dockerfile for
+  the Next.js console, and docker-compose.yml wiring api + web +
+  a Qdrant service (the API is preconfigured with
+  NR_VECTOR_STORE=qdrant / NR_QDRANT_URL). Ollama stays on the
+  host (models are large and Metal-bound on a Mac) and is reached
+  via host.docker.internal. `docker compose up --build`, then
+  localhost:3000 (console) or localhost:8000/dashboard.
+  (The compose file is validated; the images were not built in
+  the sandbox, which has no Docker — first build happens on the
+  developer's machine.)
+- Deliberately still swappable seams, not wired services:
+  PostgreSQL/Redis. Nothing in the request path needs shared
+  state yet — traces sit behind the ExecutionTracer class and
+  uploads on the filesystem — so they are documented here as the
+  production swap rather than deployed unused. 117 tests.

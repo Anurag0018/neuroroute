@@ -34,7 +34,8 @@ class NeuroRoutePipeline:
 
     async def process(self, query: str, attachments: list[str] | None = None,
                       budget: Budget | None = None,
-                      request_id: str | None = None) -> dict:
+                      request_id: str | None = None,
+                      session_id: str | None = None) -> dict:
         budget = budget or Budget()
         analysis = input_analyzer.analyze(query, attachments, request_id)
         complexity = complexity_estimator.estimate(analysis)
@@ -111,6 +112,7 @@ class NeuroRoutePipeline:
 
         trace = {
             "request_id": analysis.request_id,
+            "session_id": session_id,
             "query": query,
             "analysis": asdict(analysis),
             "complexity": asdict(complexity),

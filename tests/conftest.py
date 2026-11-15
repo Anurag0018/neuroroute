@@ -14,3 +14,4 @@ os.environ["NR_PLAN_MODEL"] = "strategy"
 os.environ["NR_EMBEDDINGS"] = "hash"
 os.environ["NR_VECTOR_STORE"] = "memory"
 os.environ["NR_AUDIO_MODE"] = "mock"
+os.environ.pop("NR_API_KEY", None)

@@ -1,0 +1,42 @@
+# NeuroRoute deployment (architecture section 3: infrastructure/).
+#   docker compose up --build
+# API on :8000 (dashboard at /dashboard), web console on :3000,
+# Qdrant on :6333. Ollama is expected on the host (models are large
+# and GPU/Metal-bound); the API reaches it via host.docker.internal.
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      NR_MODEL_MODE: ollama
+      NR_OLLAMA_URL: http://host.docker.internal:11434
+      NR_VECTOR_STORE: qdrant
+      NR_QDRANT_URL: http://qdrant:6333
+      # NR_API_KEY: set to require an API key on all non-public routes
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - app_data:/app/data
+    depends_on:
+      - qdrant
+
+  web:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEUROUTE_API_URL: http://api:8000
+    depends_on:
+      - api
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  app_data:
+  qdrant_data:

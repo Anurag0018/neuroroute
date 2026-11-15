@@ -11,8 +11,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from backend.intelligence import complexity_estimator, input_analyzer
@@ -24,6 +24,27 @@ from backend.schemas import Budget
 
 app = FastAPI(title="NeuroRoute", version="0.1.0",
               description="Adaptive AI inference & orchestration platform — Phase 1 MVP")
+
+# API-gateway authentication: when NR_API_KEY is set, every
+# non-public route requires it (X-API-Key header or Bearer token).
+# Unset = open, which is the local-development default. The key is
+# read per request so it can be rotated without a restart.
+_PUBLIC_PATHS = {"/", "/health", "/dashboard", "/docs", "/openapi.json"}
+
+
+@app.middleware("http")
+async def api_key_auth(request: Request, call_next):
+    key = os.environ.get("NR_API_KEY")
+    if key and request.url.path not in _PUBLIC_PATHS:
+        supplied = request.headers.get("x-api-key", "")
+        authorization = request.headers.get("authorization", "")
+        if authorization.lower().startswith("bearer "):
+            supplied = authorization[7:]
+        if supplied != key:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or missing API key"})
+    return await call_next(request)
 pipeline = NeuroRoutePipeline()
 _decision_model = RuleBasedDecisionModel()
 _STATIC = Path(__file__).parent / "static"
@@ -45,6 +66,7 @@ class QueryIn(BaseModel):
     query: str = Field(min_length=1)
     attachments: list[str] = []
     budget: Optional[BudgetIn] = None
+    session_id: Optional[str] = None
 
 
 def _budget(b: Optional[BudgetIn]) -> Budget:
@@ -61,6 +83,7 @@ def health():
             "vector_store": retrieval.store.name,
             "vision_model": os.environ.get("NR_VISION_MODEL", "llava:7b"),
             "whisper_model": os.environ.get("NR_WHISPER_MODEL", "tiny"),
+            "auth_enabled": bool(os.environ.get("NR_API_KEY")),
             "prices_per_1k_usd": rate_card(),
             "documents": retrieval.documents()}
 
@@ -122,14 +145,18 @@ def list_documents():
 async def query(body: QueryIn):
     try:
         return await pipeline.process(body.query, body.attachments,
-                                      _budget(body.budget))
+                                      _budget(body.budget),
+                                      session_id=body.session_id)
     except PlanRejected as e:
         raise HTTPException(status_code=422, detail=f"Plan rejected: {e}")
 
 
 @app.get("/traces")
-def traces():
-    return pipeline.tracer.list()
+def traces(session_id: Optional[str] = None):
+    all_traces = pipeline.tracer.list()
+    if session_id is not None:
+        return [t for t in all_traces if t.get("session_id") == session_id]
+    return all_traces
 
 
 @app.get("/traces/{request_id}")
@@ -143,6 +170,14 @@ def trace(request_id: str):
 @app.get("/metrics/summary")
 def metrics_summary():
     return pipeline.tracer.summary()
+
+
+@app.get("/metrics/prometheus")
+def metrics_prometheus():
+    """Prometheus exposition format for scraping (monitoring row of
+    the architecture's stack table; Grafana can chart these)."""
+    return PlainTextResponse(pipeline.tracer.prometheus_text(),
+                             media_type="text/plain; version=0.0.4")
 
 
 @app.get("/dashboard")

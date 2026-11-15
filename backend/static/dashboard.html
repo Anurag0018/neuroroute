@@ -20,6 +20,7 @@
 <body>
 <h1>🧠 NeuroRoute — Live Execution Dashboard</h1>
 <div class="sub">Watch routing, the execution graph, confidence and cost per request. Upload a document (PDF/TXT/MD) and it becomes retrievable — queries then attach it automatically.</div>
+<div class="sub">API key (only needed when the server sets NR_API_KEY): <input type="password" id="apikey" placeholder="X-API-Key" style="width:220px" onchange="localStorage.setItem('nr_key', this.value)"></div>
 <textarea id="q">Research how retrieval augmented generation improves factual accuracy</textarea>
 <br><button onclick="run()">Run request</button>
 <span style="margin-left:14px">
@@ -129,13 +130,18 @@ function renderGraph(t) {
 }
 
 let attached = null;
+function keyHeaders() {
+  const k = localStorage.getItem('nr_key');
+  return k ? {'X-API-Key': k} : {};
+}
+document.getElementById('apikey').value = localStorage.getItem('nr_key') || '';
 async function upload() {
   const f = document.getElementById('doc').files[0];
   const st = document.getElementById('docStatus');
   if (!f) { st.textContent = 'Choose a file first.'; return; }
   st.textContent = 'Ingesting…';
   const fd = new FormData(); fd.append('file', f);
-  const res = await fetch('/documents', {method:'POST', body: fd});
+  const res = await fetch('/documents', {method:'POST', body: fd, headers: keyHeaders()});
   const t = await res.json();
   if (res.ok) { attached = t.source; st.textContent = `Ingested ${t.source}: ${t.chunks_ingested} chunk(s). It will be attached to your queries.`; }
   else { st.textContent = 'Upload failed: ' + (t.detail || res.status); }
@@ -169,7 +175,7 @@ function renderResult(t) {
 async function run() {
   const out = document.getElementById('out');
   out.innerHTML = '<div class="card">Running…</div>';
-  const res = await fetch('/query', {method:'POST', headers:{'Content-Type':'application/json'},
+  const res = await fetch('/query', {method:'POST', headers:{'Content-Type':'application/json', ...keyHeaders()},
     body: JSON.stringify({query: document.getElementById('q').value, attachments: attached ? [attached] : []})});
   renderResult(await res.json());
   loadTraces();
@@ -179,7 +185,7 @@ let traceCache = {};
 async function loadTraces() {
   const el = document.getElementById('traces');
   try {
-    const res = await fetch('/traces');
+    const res = await fetch('/traces', {headers: keyHeaders()});
     const list = await res.json();
     traceCache = {}; list.forEach(t => traceCache[t.request_id] = t);
     if (!list.length) { el.innerHTML = ''; return; }
