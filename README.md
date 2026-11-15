@@ -400,3 +400,53 @@ Findings:
   conclusions are unaffected — the LLM router matched the expected
   strategy 24/24 — but the token figures belong to the LLM-router
   configuration and are not comparable to the rules run.
+
+## Phase 5 — Cost model & budgets (2026-11-15)
+
+Until now the dollar figures only existed in mock mode: the Ollama
+adapter returned cost_usd = 0.0 ("local inference is free"), so in
+real runs every trace, metric and budget check saw $0. Phase 5
+makes cost a first-class, modelled quantity in both modes.
+
+Rate card (USD per 1K tokens, blended input+output, reference
+prices in backend/models/model_registry.py):
+
+| Tier | $/1K tokens |
+|---|---|
+| small | 0.00015 |
+| medium | 0.0006 |
+| large | 0.0025 |
+| verifier | 0.0006 |
+| retrieval node | 0.00005 flat |
+
+Local inference has no invoice, so these are MODELLED costs: real
+token counts priced at the reference card, which makes routing
+economics measurable and comparable to cloud APIs. Any tier's rate
+can be replaced with a real provider's price via env override
+(NR_PRICE_SMALL_PER_1K, NR_PRICE_MEDIUM_PER_1K,
+NR_PRICE_LARGE_PER_1K, NR_PRICE_VERIFIER_PER_1K; invalid values
+fall back to the defaults). /health exposes the effective card.
+
+Budget enforcement (budgets existed since Phase 1; now they bind
+on real numbers):
+- Plan time: the validator rejects any plan whose estimated cost
+  exceeds the request budget (default cap $0.05, 5,000 tokens,
+  4 model calls, 10s, 1 escalation per request).
+- Run time: after every attempt the budget manager re-checks
+  actual tokens / dollars / calls / latency and stops escalation
+  when a cap is hit. Estimated and actual cost are tracked as
+  separate fields end to end.
+
+The benchmark now reports avg_cost_usd per system and the
+project's goal metric, quality per dollar. From the tuned run's
+recorded token averages, the baselines price out exactly:
+always-large 520 tokens/query at the large rate = $0.00130 per
+query ($1.30 per 1,000 queries, quality-per-dollar ~769);
+always-medium 183 tokens at the medium rate = $0.00011 per query
+(~8,016 quality per dollar at quality 0.88 — cheap, but it buys
+the lower quality). NeuroRoute's exact figure needs the costed
+re-run (its 440-token average mixes tiers; priced entirely at the
+large rate it is bounded at $0.00110 per query):
+
+  NR_MODEL_MODE=ollama python -m benchmark.run_benchmark \
+      --output benchmark/results-cost.json

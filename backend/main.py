@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from backend.intelligence import complexity_estimator, input_analyzer
 from backend.intelligence.decision_model import RuleBasedDecisionModel
-from backend.models.model_registry import REGISTRY
+from backend.models.model_registry import REGISTRY, rate_card
 from backend.pipeline import NeuroRoutePipeline
 from backend.planning.graph_validator import PlanRejected, validate_plan
 from backend.schemas import Budget
@@ -53,11 +53,12 @@ def _budget(b: Optional[BudgetIn]) -> Budget:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "neuroroute", "phase": 3,
+    return {"status": "ok", "service": "neuroroute", "phase": 5,
             "model_mode": os.environ.get("NR_MODEL_MODE", "mock"),
             "decision_model": os.environ.get("NR_DECISION_MODEL", "rules"),
             "plan_model": os.environ.get("NR_PLAN_MODEL", "strategy"),
             "embeddings": retrieval.embedder.name,
+            "prices_per_1k_usd": rate_card(),
             "documents": retrieval.documents()}
 
 

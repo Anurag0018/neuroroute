@@ -2,9 +2,20 @@
 not from model size alone. Costs are USD per 1,000 tokens (blended
 input+output, illustrative) and latency is a typical value that
 should be replaced with rolling measured averages in production.
+
+Phase 5 pricing: the registry rates are REFERENCE prices. Local
+(Ollama) inference has no per-token bill, so generations are priced
+at these rates to make routing economics measurable and comparable
+to cloud APIs — every dollar figure in NeuroRoute is a modelled
+cost under this rate card, never a claim about an actual invoice.
+Rates are env-overridable per tier (NR_PRICE_SMALL_PER_1K,
+NR_PRICE_MEDIUM_PER_1K, NR_PRICE_LARGE_PER_1K,
+NR_PRICE_VERIFIER_PER_1K) so the same code can be priced against a
+real provider's card without a code change.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 
@@ -40,5 +51,25 @@ def get(tier: str) -> ModelEntry:
     return REGISTRY[tier]
 
 
+def price_per_1k(tier: str) -> float:
+    """Effective USD price per 1K tokens for a tier: the
+    NR_PRICE_<TIER>_PER_1K env override when it parses to a
+    positive number, else the registry reference rate."""
+    raw = os.environ.get(f"NR_PRICE_{tier.upper()}_PER_1K")
+    if raw:
+        try:
+            value = float(raw)
+            if value > 0:
+                return value
+        except ValueError:
+            pass
+    return REGISTRY[tier].cost_per_1k_tokens
+
+
+def rate_card() -> dict:
+    """The effective rate card (defaults + any env overrides)."""
+    return {tier: price_per_1k(tier) for tier in REGISTRY}
+
+
 def estimate_cost_usd(tier: str, tokens: int) -> float:
-    return round(tokens / 1000.0 * REGISTRY[tier].cost_per_1k_tokens, 6)
+    return round(tokens / 1000.0 * price_per_1k(tier), 6)

@@ -28,7 +28,8 @@ def test_parse_generation_uses_provider_counts():
     assert gen.text == "hello"
     assert gen.tokens == 18
     assert gen.latency_ms == 250
-    assert gen.cost_usd == 0.0  # local inference
+    # Modelled cost: 18 tokens at the default (large) reference rate.
+    assert gen.cost_usd == 0.000045
 
 
 def test_default_adapter_is_mock(monkeypatch):

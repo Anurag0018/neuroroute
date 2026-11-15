@@ -99,14 +99,17 @@ def build_prompt(tier: str, query: str,
     return query
 
 
-def parse_generation(data: dict, prompt: str) -> Generation:
+def parse_generation(data: dict, prompt: str, tier: str = "large") -> Generation:
     text = (data.get("response") or "").strip()
     tokens = int(data.get("prompt_eval_count") or 0) + int(data.get("eval_count") or 0)
     if tokens == 0:
         tokens = _est_tokens(prompt, text)
     latency_ms = int((data.get("total_duration") or 0) / 1_000_000)
-    # Local inference: no per-token API cost.
-    return Generation(text=text, tokens=tokens, cost_usd=0.0,
+    # Local inference has no invoice; price the tokens at the tier's
+    # reference rate so cost accounting works identically in both
+    # modes (see model_registry — a modelled cost, not a bill).
+    return Generation(text=text, tokens=tokens,
+                      cost_usd=estimate_cost_usd(tier, tokens),
                       latency_ms=max(latency_ms, 1))
 
 
@@ -136,7 +139,7 @@ class OllamaLLMAdapter:
                 f"Ollama is not reachable at {self.base_url}. Install Ollama, "
                 "make sure it is running, and pull the models first "
                 "(see README > Using real models).") from exc
-        gen = parse_generation(resp.json(), prompt)
+        gen = parse_generation(resp.json(), prompt, tier)
         if gen.latency_ms <= 1:
             gen.latency_ms = max(int((time.time() - started) * 1000), 1)
         return gen

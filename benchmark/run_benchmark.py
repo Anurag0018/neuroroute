@@ -55,8 +55,10 @@ def run_baselines(adapter, retrieval, item) -> dict:
     gen_b, ms_b = _timed(lambda: adapter.generate("medium", query, docs or None))
     return {
         "always_large": {"latency_ms": ms_a, "tokens": gen_a.tokens,
+                         "cost_usd": gen_a.cost_usd,
                          "quality": quality(gen_a.text, groups)},
         "always_medium": {"latency_ms": ms_b, "tokens": gen_b.tokens,
+                          "cost_usd": gen_b.cost_usd,
                           "quality": quality(gen_b.text, groups)},
     }
 
@@ -71,6 +73,7 @@ async def run_neuroroute(pipeline, item) -> dict:
     history = result.get("escalation_history") or []
     initial = history[0]["from"] if history else result["strategy"]
     return {"latency_ms": ms, "tokens": result["metrics"]["tokens"],
+            "cost_usd": result["metrics"]["cost_usd"],
             "quality": quality(result["answer"], item["expected_keywords"]),
             "strategy": result["strategy"], "initial_strategy": initial,
             "expected_strategy": item["expected_strategy"],
@@ -135,6 +138,11 @@ async def main():
                        for s in ("always_large", "always_medium", "neuroroute")},
         "avg_quality": {s: _avg(rows, s, "quality")
                         for s in ("always_large", "always_medium", "neuroroute")},
+        # Phase 5: modelled dollar cost per query under the registry
+        # rate card, and the project's goal metric — quality per dollar.
+        "avg_cost_usd": {s: round(sum(r[s]["cost_usd"] for r in rows) / len(rows), 6)
+                         for s in ("always_large", "always_medium", "neuroroute")},
+        "quality_per_dollar": {},
         "neuroroute_savings_vs_always_large": {
             "latency_pct": _savings(rows, "always_large", "latency_ms"),
             "tokens_pct": _savings(rows, "always_large", "tokens")},
@@ -142,6 +150,18 @@ async def main():
             "latency_pct": _savings(rows, "always_medium", "latency_ms"),
             "tokens_pct": _savings(rows, "always_medium", "tokens")},
     }
+    for s in ("always_large", "always_medium", "neuroroute"):
+        cost = summary["avg_cost_usd"][s]
+        summary["quality_per_dollar"][s] = (
+            round(summary["avg_quality"][s] / cost, 1) if cost else None)
+    # Cost savings computed from the unrounded-precision averages
+    # (_avg rounds to 2dp, which would zero out sub-cent costs).
+    for key, base_sys in (("neuroroute_savings_vs_always_large", "always_large"),
+                          ("neuroroute_savings_vs_always_medium", "always_medium")):
+        base = summary["avg_cost_usd"][base_sys]
+        nr_cost = summary["avg_cost_usd"]["neuroroute"]
+        summary[key]["cost_pct"] = (
+            round((1 - nr_cost / base) * 100, 1) if base else 0.0)
     Path(args.output).write_text(json.dumps(
         {"summary": summary, "rows": rows}, indent=1))
     print("\n=== SUMMARY ===")
