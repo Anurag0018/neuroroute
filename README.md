@@ -218,3 +218,27 @@ routing accuracy and the overhead the LLM router adds:
 
 Tests: 35 passing (8 new in tests/test_decision_model.py, all with
 stub adapters — no real model needed).
+
+### Router A/B results (real, local Ollama, 24 queries, 2026-11-15)
+
+| Router | Routing | NR latency | NR tokens | Quality |
+|---|---|---|---|---|
+| Rules (tuned) | 24/24 | 10,022 ms | 440 | 0.97 |
+| LLM v1 (qwen2.5:1.5b) | 19/24 | 16,968 ms | 939 | 0.94 |
+| LLM v2 (calibrated prompt) | 24/24 | 12,279 ms | 927 | 0.96 |
+
+Findings:
+- The v1 prompt's misses were **all over-escalation**: 5 of 8 medium
+  (research/explain) queries were sent to `verified_large` "to be safe".
+  No query was under-routed, and guardrails bounded every miss to
+  non-critical queries.
+- The v2 prompt fixed accuracy (24/24) by stating the cost asymmetry
+  (~5x), requiring a concrete reason for `verified_large`, and adding
+  a tie-break rule: **choose the cheaper strategy — the escalation
+  controller catches weak answers downstream**, so the router should
+  bias cheap.
+- Even at accuracy parity, the LLM router costs ~2x the tokens of
+  rules: the decision call itself (~450–500 tokens/query, mostly the
+  prompt) is a structural overhead rules don't pay. Its value is
+  generalisation to query types nobody wrote rules for, not beating
+  rules on a fixed set. Rules therefore remain the default.

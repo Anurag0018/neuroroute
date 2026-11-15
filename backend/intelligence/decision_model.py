@@ -56,19 +56,25 @@ class RuleBasedDecisionModel:
         return build_plan(strategy, analysis, complexity, budget)
 
 
-_DECISION_PROMPT = """You are the routing planner of an AI inference system. You do NOT answer the user's request. You choose how it should be answered.
+_DECISION_PROMPT = """You are the routing planner of an AI inference system. You do NOT answer the request. You choose how it should be answered, as cheaply as safely possible.
 
-Strategies:
-- direct_small: small model only. For simple factual or short questions needing no external knowledge.
-- rag_medium: retrieve relevant documents, then a medium model answers from them. For questions needing specific, external or researched knowledge.
-- verified_large: large model plus independent verification. For complex reasoning, analysis, documents, or anything high-risk.
+Strategies (cheapest first):
+- direct_small: small model only. Simple factual or short questions, no external knowledge needed.
+- rag_medium: retrieve documents, medium model answers from them. Explaining or researching a topic, however technical.
+- verified_large: large model + verification, ~5x the cost of rag_medium. ONLY for: document inputs, high-risk topics, or deep multi-step analysis.
+
+Rules:
+- Explaining a concept is rag_medium, never verified_large by itself.
+- If torn between two strategies, choose the CHEAPER one: a later confidence check can escalate if the answer is weak. Over-choosing verified_large wastes most of the budget.
+- verified_large requires a concrete reason (document, risk, or deep analysis), not "to be safe".
 
 Respond with ONLY a JSON object, no other text:
 {{"strategy": "<one of: direct_small, rag_medium, verified_large>", "reason": "<one short sentence>"}}
 
 Examples:
 Request: "What is the capital of France?" -> {{"strategy": "direct_small", "reason": "Simple factual question."}}
-Request: "Explain how vector databases support semantic search" -> {{"strategy": "rag_medium", "reason": "Needs specific researched knowledge."}}
+Request: "Explain how vector databases support semantic search" -> {{"strategy": "rag_medium", "reason": "Topic explanation needing researched knowledge."}}
+Request: "Research how retrieval augmented generation improves factual accuracy" -> {{"strategy": "rag_medium", "reason": "Research explanation; retrieval grounds a medium model."}}
 Request: "Analyse this contract for risky clauses" (attachment: contract.pdf) -> {{"strategy": "verified_large", "reason": "Document analysis with high stakes."}}
 
 Now decide for this request:
