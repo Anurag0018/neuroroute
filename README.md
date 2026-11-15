@@ -18,7 +18,7 @@ overhead included in NeuroRoute's own totals.
 Everything runs locally (Ollama) with a deterministic mock mode
 for tests and demos; no API keys are required.
 
-## Headline results (real local models, 2026-11-14/15)
+## Headline results (real local models)
 
 | Benchmark | Routing | Quality (NR vs large / medium) | Headline |
 | --- | --- | --- | --- |
@@ -30,7 +30,7 @@ for tests and demos; no API keys are required.
 | Audio, 3 voice notes | 3/3 | **0.67** vs 0.00 / 0.00 | Capability path: baselines cannot hear |
 
 Quality is a transparent keyword-coverage proxy (documented in
-each dataset), not a judge model. Full methodology, per-phase
+each dataset), not a judge model. Full methodology, detailed
 results and the failures along the way are in the development
 log below — nothing is cherry-picked; runs that executed in
 the wrong configuration are labelled as such.
@@ -113,7 +113,7 @@ name an attachment; no node may invent a model tier.
 **Confidence & verification.** Score = 0.35·evidence coverage
 + 0.25·validation + 0.20·retrieval relevance + 0.20·model
 agreement. Bands: return ≥ 0.85, verify 0.60–0.84, escalate
-< 0.60 (env-tunable; calibration findings in the Phase 4 log).
+< 0.60 (env-tunable; calibration findings in the calibration log below).
 Verification is evidence- and rule-based — never a second
 LLM's opinion of the first.
 
@@ -235,14 +235,14 @@ tests/            pytest suite
 
 ---
 
-## Development log — measured results, phase by phase
+## Development log — measured results
 
-Everything below is the chronological build log with the real
+Everything below is the build log with the real
 numbers as they were measured, including the tuning, the
 calibration study, the wrong-configuration runs and what they
 taught. The headline table above is drawn from these sections.
 
-## Post-benchmark tuning (v1.1, 2026-11-14)
+## Overhead tuning
 
 Two overhead leaks found in the full 24-query run, fixed without
 changing any routing decision:
@@ -263,7 +263,7 @@ Tests: 27 passing (4 new in tests/test_tuning.py). Re-run
 `python -m benchmark.run_benchmark` with NR_MODEL_MODE=ollama to
 refresh the results table with tuned numbers.
 
-## Phase 2 — LLM decision model (2026-11-14)
+## LLM decision model
 
 The router itself can now be a model. `LLMDecisionModel`
 (backend/intelligence/decision_model.py) asks a lightweight LLM —
@@ -297,7 +297,7 @@ routing accuracy and the overhead the LLM router adds:
 Tests: 35 passing (8 new in tests/test_decision_model.py, all with
 stub adapters — no real model needed).
 
-### Router A/B results (real, local Ollama, 24 queries, 2026-11-15)
+### Router A/B results (real, local Ollama, 24 queries)
 
 | Router | Routing | NR latency | NR tokens | Quality |
 |---|---|---|---|---|
@@ -321,7 +321,7 @@ Findings:
   generalisation to query types nobody wrote rules for, not beating
   rules on a fixed set. Rules therefore remain the default.
 
-## Phase 3 — Dynamic execution DAGs (2026-11-15)
+## Dynamic execution DAGs
 
 Plans are no longer only three fixed templates:
 
@@ -343,7 +343,7 @@ Plans are no longer only three fixed templates:
    graph_validator authorises it unchanged (allowlist, registered
    tiers, acyclic, within budget); guardrail inputs bypass it, and
    any failure falls back to the strategy templates. Its planning
-   call is charged to the request like the Phase 2 router's. A
+   call is charged to the request like the LLM router's. A
    free-form llm_dag plan has no escalation template, so a
    low-confidence result stands flagged uncertain rather than
    escalating.
@@ -352,7 +352,7 @@ Tests: 48 passing (13 new in tests/test_phase3.py, stub adapters).
 Multipart benchmark:
     python -m benchmark.run_benchmark --dataset benchmark/queries_multipart.json --output benchmark/results_multipart.json
 
-## Retrieval upgrade — real documents + embeddings (2026-11-15)
+## Retrieval upgrade — real documents + embeddings
 
 Retrieval is no longer a fixed toy corpus scored by hand:
 
@@ -379,7 +379,7 @@ Retrieval is no longer a fixed toy corpus scored by hand:
 Tests: 54 passing (6 new in tests/test_retrieval_upgrade.py,
 including a generated-PDF ingestion test).
 
-## Dashboard — visual execution graph (2026-11-15)
+## Dashboard — visual execution graph
 
 The dashboard now renders the execution graph as a real DAG (SVG):
 nodes are laid out in topological levels — parallel branches appear
@@ -394,7 +394,7 @@ trace so it places correctly in decomposed and LLM-planned graphs.
 Tests: 56 passing (2 new in tests/test_dashboard.py; the layout
 logic is also exercised headlessly against a decomposed trace).
 
-## Embeddings A/B results (2026-11-15, benchmark/retrieval_ab.py)
+## Embeddings A/B results (benchmark/retrieval_ab.py)
 
 8 probes over the seed corpus — 3 keyword-style (query uses the
 document's own words) and 5 paraphrase-style (same meaning, different
@@ -421,7 +421,7 @@ Findings:
   install (torch) exactly when users phrase things their own way.
   Full per-probe data: benchmark/retrieval_ab_results.json.
 
-## Phase 4 — Confidence calibration (2026-11-15)
+## Confidence calibration
 
 Method: a fresh 24-query Ollama run whose rows record the final
 confidence score next to measured quality (benchmark/calibrate.py
@@ -479,11 +479,11 @@ Findings:
   strategy 24/24 — but the token figures belong to the LLM-router
   configuration and are not comparable to the rules run.
 
-## Phase 5 — Cost model & budgets (2026-11-15)
+## Cost model & budgets
 
 Until now the dollar figures only existed in mock mode: the Ollama
 adapter returned cost_usd = 0.0 ("local inference is free"), so in
-real runs every trace, metric and budget check saw $0. Phase 5
+real runs every trace, metric and budget check saw $0. The cost model
 makes cost a first-class, modelled quantity in both modes.
 
 Rate card (USD per 1K tokens, blended input+output, reference
@@ -505,7 +505,7 @@ can be replaced with a real provider's price via env override
 NR_PRICE_LARGE_PER_1K, NR_PRICE_VERIFIER_PER_1K; invalid values
 fall back to the defaults). /health exposes the effective card.
 
-Budget enforcement (budgets existed since Phase 1; now they bind
+Budget enforcement (budgets existed from the start; now they bind
 on real numbers):
 - Plan time: the validator rejects any plan whose estimated cost
   exceeds the request budget (default cap $0.05, 5,000 tokens,
@@ -515,7 +515,7 @@ on real numbers):
   when a cap is hit. Estimated and actual cost are tracked as
   separate fields end to end.
 
-Costed run (2026-11-15, Ollama, 24 queries, routing 24/24;
+Costed run (Ollama, 24 queries, routing 24/24;
 benchmark/results-cost.json):
 
 | System | Tokens/query | $/query | $/1,000 queries | Quality | Quality/$ |
@@ -540,9 +540,9 @@ Findings:
   benchmark terminal - detected from the easy-row token
   fingerprint: 573-759 tokens vs the ~212 maximum for a
   rules-mode small-tier call, and confirmed by the 891-token
-  average matching the Phase 2 A/B signature).
+  average matching the router A/B signature).
 
-Rules configuration, measured (pinned re-run, 2026-11-15;
+Rules configuration, measured (pinned re-run;
 benchmark/results-cost-rules.json): routing 24/24, NeuroRoute
 396 tokens/query (the rules fingerprint - no decision call),
 quality 0.97, avg cost $0.000513/query vs always-large
@@ -555,7 +555,7 @@ decision call runs on the cheapest tier. Token overhead is not
 cost overhead when the overhead itself is routed cheaply -
 which is, in miniature, the platform's whole thesis.
 
-## Tool engine — subsystem 3 completed (2026-11-15)
+## Tool engine
 
 The architecture document's Tool Engine ("APIs / Python / Search";
 execution layer: "Tool executor — APIs, calculations, web
@@ -592,7 +592,7 @@ proposes, the backend authorises — never arbitrary tool execution.
   unchanged (24/24, 6/6 — detection has no false positives on
   either set). 89 tests total.
 
-Measured (real Ollama run, rules router, 2026-11-15;
+Measured (real Ollama run, rules router;
 benchmark/results-tools.json):
 
 | System | Latency | Tokens | $/query | Quality | Quality/$ |
@@ -609,7 +609,7 @@ perfect, 94.7% faster and 93.9% cheaper than always-large
 architecture document's core claim in miniature: choose the
 right computational pathway, don't just buy a bigger model.
 
-## Multimodal engine — subsystem 3 completed (2026-11-15)
+## Multimodal engine — vision
 
 The architecture routes multimodal requests "through OCR, vision
 or audio preprocessing only when required" (section A). That is
@@ -643,7 +643,7 @@ now implemented as a first-class graph node:
 - The LLM DAG planner bypasses image requests to the
   vision_grounded template (it cannot know attachment filenames;
   perception is a fixed preprocessing requirement, not a design
-  choice), while the Phase 2 router prompt documents the new
+  choice), while the LLM router prompt documents the new
   strategy.
 - Benchmark: benchmark/queries_vision.json (3 queries over the
   generated assets in benchmark/assets/ — a labelled bar chart
@@ -651,7 +651,7 @@ now implemented as a first-class graph node:
   multipart and tool routing unchanged. 99 tests total. Real
   runs need `ollama pull llava:7b` once.
 
-Measured (real Ollama run, llava:7b, rules router, 2026-11-15;
+Measured (real Ollama run, llava:7b, rules router;
 benchmark/results-vision.json): routing 3/3, NeuroRoute quality
 0.67 vs 0.50 for both baselines — but latency 25,105ms vs
 5,957ms and $0.001035 vs $0.000307 per query, so quality-per-
@@ -666,7 +666,7 @@ for an actual perception pass: llava:7b on a MacBook Air is slow
 of the three; a smaller vision model (moondream via
 NR_VISION_MODEL) is the obvious lever on the latency.
 
-## Qdrant vector store + Next.js frontend — project complete (2026-11-15)
+## Qdrant vector store + Next.js frontend
 
 The last two named technologies in the architecture document are
 now in place, both behind seams the design already had:
@@ -704,7 +704,7 @@ calibrated thresholds, a priced budget system, HoneyHive-style
 observability, and benchmarked quality-per-unit-cost against
 always-large and always-medium baselines. 103 tests.
 
-## Audio path — multimodal engine complete (2026-11-15)
+## Audio path
 
 The last capability named in the architecture (section E: "Audio
 model — speech recognition"; section 1: Text / PDF / Image /
@@ -740,8 +740,8 @@ Audio) is implemented exactly like the vision path:
   nodes render red in the execution graph. Benchmark:
   benchmark/queries_audio.json routes 3/3 in mock mode. 112 tests.
 
-Measured (real run, faster-whisper tiny, rules router,
-2026-11-15; benchmark/results-audio.json): routing 3/3,
+Measured (real run, faster-whisper tiny, rules router;
+benchmark/results-audio.json): routing 3/3,
 NeuroRoute quality 0.67 vs 0.00 for both baselines - the
 baselines score literally zero because they cannot hear the
 audio at all; like the vision path, this is a capability path,
@@ -763,7 +763,7 @@ With this, every row of the architecture's execution table —
 small/medium/large LLMs, embeddings, vector DB, vision, OCR,
 audio, tools, verification — is implemented and tested.
 
-## Infrastructure pack (2026-11-15)
+## Infrastructure pack
 
 The deployment rows of the architecture's stack table:
 
@@ -797,7 +797,7 @@ The deployment rows of the architecture's stack table:
   uploads on the filesystem — so they are documented here as the
   production swap rather than deployed unused. 117 tests.
 
-## MCP server — the agent interface (2026-11-15)
+## MCP server — the agent interface
 
 NeuroRoute now speaks two protocols over one execution core:
 
