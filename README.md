@@ -39,57 +39,55 @@ the wrong configuration are labelled as such.
 
 ```mermaid
 flowchart TD
-    Req(["Request (text, documents, images, audio)"])
+    Req(["Request (text, files, images, audio)"])
 
-    subgraph Intel["1 · Intelligence & Routing"]
-        direction LR
-        IA["Input Analyzer (modality, risk, attachments)"]
-        CE["Complexity Estimator"]
-        DM["Decision Model (rules or lightweight LLM)"]
-        IA --> CE --> DM
+    subgraph Intel["1. Intelligence & Routing"]
+        IA["Input Analyzer"] --> CE["Complexity Estimator"] --> DM["Decision Model (rules or LLM)"]
     end
 
-    subgraph Plan["2 · Dynamic Execution Planning & Guardrails"]
-        GV["Graph Validator (allowlisted kinds/tiers, registered tools, acyclic, budget cap, guardrails)"]
+    subgraph Plan["2. Dynamic Execution Planning"]
+        GV["Graph Validator (allowlist, acyclic, guardrails, budget cap)"]
     end
 
-    subgraph Exec["3 · Model & Tool Orchestration (Async DAG Executor)"]
-        direction LR
-        S["direct_small (small LLM)"]
-        R["rag_medium (retrieve -> medium)"]
-        D["decomposed_research (parallel retrieve+medium -> large synth)"]
-        T["tool_assisted (calculator / datetime / web_search -> small/medium)"]
-        V["vision_grounded (perceive -> medium)"]
-        A["audio_grounded (transcribe -> medium)"]
-        L["verified_large ([retrieve/perceive/transcribe] -> large -> verify)"]
+    subgraph Exec["3. Model & Tool Orchestration"]
+        DAG["Async DAG Executor (parallel levels)"]
+        LLM["LLM Tiers (small, medium, large, verifier)"]
+        RET["Retrieval (embeddings + memory or Qdrant)"]
+        TOOL["Tools (calculator, datetime, web_search)"]
+        MM["Multimodal (vision perceive, Whisper transcribe)"]
+        DAG --> LLM
+        DAG --> RET
+        DAG --> TOOL
+        DAG --> MM
     end
 
-    subgraph Val["4 · Confidence & Verification"]
-        direction LR
-        CS["Confidence Score (0.35 evidence + 0.25 validation + 0.20 relevance + 0.20 agreement)"]
-        Band{"Band"}
+    subgraph Val["4. Confidence & Verification"]
+        CS["Confidence Score (evidence, validation, relevance, agreement)"]
+        Band{"Score Band"}
         Ret(["Return (>= 0.85)"])
         Adhoc["Evidence-only Verify (0.60 - 0.84)"]
         Esc["Escalation Controller (< 0.60, max 1 retry)"]
         CS --> Band
-        Band -->|"high"| Ret
-        Band -->|"mid"| Adhoc --> Esc
-        Band -->|"low"| Esc
+        Band -->|high| Ret
+        Band -->|mid| Adhoc
+        Adhoc --> Esc
+        Band -->|low| Esc
     end
 
-    subgraph Cross["5 · Budgets & 6 · Observability"]
-        BO["Per-request caps (tokens, cost, latency, calls) · JSONL traces · /dashboard · Next.js · Prometheus · MCP"]
-    end
+    BO["5. Budgets & 6. Observability (caps, JSONL traces, /dashboard, Next.js, Prometheus, MCP)"]
 
-    Req --> Intel
-    DM -->|"proposes plan (never executes)"| GV
-    GV -->|"authorised DAG"| Exec
-    Exec -->|"answer + evidence"| CS
-    Esc -->|"stronger path (if budget allows)"| GV
-    Esc -->|"done / cap hit"| Out(["Response + Trace"])
+    Req --> IA
+    DM -->|proposes plan| GV
+    GV -->|authorised DAG| DAG
+    LLM --> CS
+    RET --> CS
+    TOOL --> CS
+    MM --> CS
+    Esc -->|retry stronger path| GV
+    Esc -->|done or cap hit| Out(["Response + Trace"])
     Ret --> Out
-    Exec -.-> BO
-    Val -.-> BO
+    GV -.-> BO
+    CS -.-> BO
 ```
 
 **Request lifecycle.** (1) The input analyzer classifies the
