@@ -37,43 +37,59 @@ the wrong configuration are labelled as such.
 
 ## Architecture
 
-```
-                ┌────────────────────────────────────────────┐
-  request ─────►│ 1 · INTELLIGENCE & ROUTING                 │
-  (text, files) │ input analysis → complexity estimate →     │
-                │ decision model (rules or lightweight LLM)  │
-                └──────────────────┬─────────────────────────┘
-                                   │ proposes a plan (never executes)
-                ┌──────────────────▼─────────────────────────┐
-                │ 2 · DYNAMIC EXECUTION PLANNING             │
-                │ graph validator: allowlisted node kinds &  │
-                │ tiers, registered tools only, acyclic,     │
-                │ budget-capped — guardrails outrank models  │
-                └──────────────────┬─────────────────────────┘
-                                   │ authorised DAG
-                ┌──────────────────▼─────────────────────────┐
-                │ 3 · MODEL & TOOL ORCHESTRATION             │
-                │ DAG executor (parallel levels) over:       │
-                │ small/medium/large LLMs · retrieval        │
-                │ (embeddings + vector store) · tools        │
-                │ (calculator / datetime / web search) ·     │
-                │ vision perception · audio transcription    │
-                └──────────────────┬─────────────────────────┘
-                                   │ answer + evidence
-                ┌──────────────────▼─────────────────────────┐
-                │ 4 · CONFIDENCE & VERIFICATION              │
-                │ evidence coverage · validation · retrieval │
-                │ relevance · model agreement → score, then  │
-                │ return / verify / escalate (hard limits)   │
-                └──────────────────┬─────────────────────────┘
-                ┌──────────────────▼─────────────────────────┐
-                │ 5 · BUDGETS        6 · OBSERVABILITY       │
-                │ per-request caps   full trace per request: │
-                │ (tokens, latency,  spans, decision source, │
-                │ cost, calls),      confidence, cost — via  │
-                │ enforced at plan   dashboards, JSON and    │
-                │ time and run time  Prometheus metrics      │
-                └────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Req(["Request (text, documents, images, audio)"])
+
+    subgraph Intel["1 · Intelligence & Routing"]
+        direction LR
+        IA["Input Analyzer (modality, risk, attachments)"]
+        CE["Complexity Estimator"]
+        DM["Decision Model (rules or lightweight LLM)"]
+        IA --> CE --> DM
+    end
+
+    subgraph Plan["2 · Dynamic Execution Planning & Guardrails"]
+        GV["Graph Validator (allowlisted kinds/tiers, registered tools, acyclic, budget cap, guardrails)"]
+    end
+
+    subgraph Exec["3 · Model & Tool Orchestration (Async DAG Executor)"]
+        direction LR
+        S["direct_small (small LLM)"]
+        R["rag_medium (retrieve -> medium)"]
+        D["decomposed_research (parallel retrieve+medium -> large synth)"]
+        T["tool_assisted (calculator / datetime / web_search -> small/medium)"]
+        V["vision_grounded (perceive -> medium)"]
+        A["audio_grounded (transcribe -> medium)"]
+        L["verified_large ([retrieve/perceive/transcribe] -> large -> verify)"]
+    end
+
+    subgraph Val["4 · Confidence & Verification"]
+        direction LR
+        CS["Confidence Score (0.35 evidence + 0.25 validation + 0.20 relevance + 0.20 agreement)"]
+        Band{"Band"}
+        Ret(["Return (>= 0.85)"])
+        Adhoc["Evidence-only Verify (0.60 - 0.84)"]
+        Esc["Escalation Controller (< 0.60, max 1 retry)"]
+        CS --> Band
+        Band -->|"high"| Ret
+        Band -->|"mid"| Adhoc --> Esc
+        Band -->|"low"| Esc
+    end
+
+    subgraph Cross["5 · Budgets & 6 · Observability"]
+        BO["Per-request caps (tokens, cost, latency, calls) · JSONL traces · /dashboard · Next.js · Prometheus · MCP"]
+    end
+
+    Req --> Intel
+    DM -->|"proposes plan (never executes)"| GV
+    GV -->|"authorised DAG"| Exec
+    Exec -->|"answer + evidence"| CS
+    Esc -->|"stronger path (if budget allows)"| GV
+    Esc -->|"done / cap hit"| Out(["Response + Trace"])
+    Ret --> Out
+    Exec -.-> BO
+    Val -.-> BO
 ```
 
 **Request lifecycle.** (1) The input analyzer classifies the
@@ -146,46 +162,125 @@ registry to AI clients; two dashboards (built-in at
 > Python 3.10+ recommended (3.9 works via the
 > `eval_type_backport` dependency in requirements.txt).
 
+### 1. Install dependencies
+
 ```bash
 cd neuroroute
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+
+# Optional capabilities (install only what you need):
+pip install sentence-transformers          # semantic embeddings (all-MiniLM-L6-v2)
+pip install qdrant-client                  # Qdrant vector store
+pip install faster-whisper "av>=11,<13"    # local Whisper audio transcription
+pip install "mcp>=1.2,<2"                  # MCP stdio server
+```
+
+### 2. Run the backend API & built-in dashboard
+
+```bash
+# Offline deterministic mock mode (default, no Ollama needed):
 uvicorn backend.main:app --reload
+
+# Real local models via Ollama (pull models once first):
+ollama pull qwen2.5:1.5b llama3.2:3b qwen2.5:7b llava:7b
+NR_MODEL_MODE=ollama uvicorn backend.main:app --reload
+
+# Optional routing/storage modes:
+NR_MODEL_MODE=ollama NR_DECISION_MODEL=llm uvicorn backend.main:app --reload   # LLM router
+NR_MODEL_MODE=ollama NR_PLAN_MODEL=llm uvicorn backend.main:app --reload       # LLM DAG planner
+NR_VECTOR_STORE=qdrant NR_API_KEY=dev-secret uvicorn backend.main:app --reload # Qdrant + auth
 ```
 
 - API docs: http://localhost:8000/docs
-- Dashboard: http://localhost:8000/dashboard
+- Built-in dashboard: http://localhost:8000/dashboard
+
+### 3. Run the Next.js console, Docker stack, or MCP server
 
 ```bash
-curl -X POST localhost:8000/query -H 'Content-Type: application/json' \
-  -d '{"query": "What is Python?"}'
+# Next.js frontend console (proxies /api/* -> http://localhost:8000):
+cd frontend && npm install && npm run dev   # http://localhost:3000
 
-# Decision only, nothing executes:
-curl -X POST localhost:8000/route/preview -H 'Content-Type: application/json' \
-  -d '{"query": "Analyse this research paper", "attachments": ["paper.pdf"]}'
+# Full Docker stack (API + Next.js + Qdrant; uses host Ollama):
+docker compose up --build
+
+# MCP server over stdio (for Claude Desktop, Cursor, or agents):
+.venv/bin/python mcp_server.py
+NR_MODEL_MODE=ollama .venv/bin/python mcp_server.py
 ```
 
-**Real models (Ollama).** Install Ollama, pull the tiers
-(`ollama pull qwen2.5:1.5b llama3.2:3b qwen2.5:7b`, plus
-`llava:7b` for vision), then start with `NR_MODEL_MODE=ollama`.
-Key configuration (all optional, mock/rules defaults):
+### 4. Send requests (`curl`)
+
+```bash
+# Health check & effective rate card:
+curl localhost:8000/health
+
+# Run a routed query:
+curl -X POST localhost:8000/query -H 'Content-Type: application/json' \
+  -d '{"query": "What is Python?", "session_id": "demo"}'
+
+# Preview routing decision only (nothing executes):
+curl -X POST localhost:8000/route/preview -H 'Content-Type: application/json' \
+  -d '{"query": "Analyse this research paper", "attachments": ["paper.pdf"]}'
+
+# Upload an image/document/audio file and query against it:
+curl -X POST localhost:8000/documents -F "file=@benchmark/assets/chart.png"
+curl -X POST localhost:8000/query -H 'Content-Type: application/json' \
+  -d '{"query": "What does this chart show?", "attachments": ["chart.png"]}'
+
+# Inspect traces & metrics:
+curl "localhost:8000/traces?session_id=demo"
+curl localhost:8000/metrics/summary
+curl localhost:8000/metrics/prometheus
+```
+
+### Configuration
+
+All environment variables are optional (defaults run in offline `mock`/`rules` mode; see `.env.example`):
 
 | Variable | Effect |
 | --- | --- |
 | `NR_MODEL_MODE` | `mock` (default) or `ollama` |
+| `NR_OLLAMA_URL` | Ollama base URL (default `http://localhost:11434`) |
+| `NR_OLLAMA_SMALL` / `_MEDIUM` / `_LARGE` / `_VERIFIER` | Override Ollama model per tier (`qwen2.5:1.5b`, `llama3.2:3b`, `qwen2.5:7b`, `llama3.2:3b`) |
 | `NR_DECISION_MODEL` | `rules` (default) or `llm` router |
 | `NR_PLAN_MODEL` | `strategy` (default) or `llm` DAG planner |
-| `NR_EMBEDDINGS` | `hash` forces hashing; MiniLM auto-used when installed |
+| `NR_DECISION_TIER` | Tier used by LLM router/planner (default `small`) |
+| `NR_EMBEDDINGS` | `auto` (default: MiniLM if installed, else `hash`), `hash`, or `sentence-transformers` |
 | `NR_VECTOR_STORE` | `memory` (default) or `qdrant` |
-| `NR_VISION_MODEL` | default `llava:7b` |
-| `NR_AUDIO_MODE` / `NR_WHISPER_MODEL` | `auto`/`whisper`/`mock`; default `tiny` |
-| `NR_API_KEY` | when set, non-public routes require it |
-| `NR_PRICE_<TIER>_PER_1K` | override the modelled rate card |
+| `NR_QDRANT_URL` / `NR_QDRANT_PATH` | Qdrant server URL, or local embedded path (default `data/qdrant`) |
+| `NR_VISION_MODEL` | Vision model for `perceive` (default `llava:7b`) |
+| `NR_AUDIO_MODE` / `NR_WHISPER_MODEL` | `auto`/`whisper`/`mock` (default `auto`); Whisper model size (default `tiny`) |
+| `NR_RETURN_THRESHOLD` / `NR_ESCALATE_THRESHOLD` | Confidence band thresholds (defaults `0.85` / `0.60`) |
+| `NR_TRACES_FILE` | JSONL trace file path (default `data/traces.jsonl`; empty disables persistence) |
+| `NR_API_KEY` | When set, non-public routes require `X-API-Key` or `Authorization: Bearer` |
+| `NR_PRICE_<TIER>_PER_1K` | Override modelled USD/1K rate (`SMALL`, `MEDIUM`, `LARGE`, `VERIFIER`) |
+| `NEUROUTE_API_URL` | Backend URL proxied by `frontend/` (default `http://localhost:8000`) |
 
 > Environment variables live only in the terminal that sets
 > them — the benchmark log below contains three separate runs
 > that silently executed in the wrong configuration because of
 > this. Pin modes inline in benchmark commands.
+
+## REST API
+
+All routes live in `backend/main.py`. When `NR_API_KEY` is set,
+non-public endpoints require `X-API-Key` or `Authorization: Bearer <key>`.
+
+| Method & Path | Purpose |
+| --- | --- |
+| `POST /query` | Run the adaptive pipeline (`query`, optional `attachments`, `budget`, `session_id`) |
+| `POST /route/preview` | Return input analysis, complexity estimate, and validated plan without executing |
+| `POST /documents` | Upload `.pdf`/`.txt`/`.md` into the vector index, or store image/audio files for per-query perception/transcription |
+| `GET /documents` | List active embedder and indexed document chunk counts |
+| `GET /models` | List registered model tiers, capabilities, context windows, and reference rates |
+| `GET /traces` | List execution traces (filterable by `?session_id=...`) |
+| `GET /traces/{request_id}` | Fetch a single execution trace |
+| `GET /metrics/summary` | Aggregate request count, latency, cost, tokens, escalation rate, and per-strategy counts |
+| `GET /metrics/prometheus` | Prometheus exposition metrics (`text/plain; version=0.0.4`) |
+| `GET /health` *(public)* | Service status, active modes, embedder, vector store, auth flag, and effective rate card |
+| `GET /dashboard` *(public)* | Built-in single-page observability dashboard |
+| `GET /docs` *(public)* | Interactive OpenAPI (Swagger) documentation |
 
 ## Benchmarks
 
@@ -194,25 +289,45 @@ vision 3, audio 3), each run against always-large and
 always-medium fixed pipelines on identical inputs:
 
 ```bash
-NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules \
-  python -m benchmark.run_benchmark --output benchmark/results.json
+# Fast harness check in mock mode:
+python -m benchmark.run_benchmark
+
+# Real Ollama benchmarks (pin modes inline):
+NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules python -m benchmark.run_benchmark --output benchmark/results.json
+NR_MODEL_MODE=ollama NR_DECISION_MODEL=llm   python -m benchmark.run_benchmark --output benchmark/results-llm.json
+NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules python -m benchmark.run_benchmark --dataset benchmark/queries_multipart.json --output benchmark/results_multipart.json
+NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules python -m benchmark.run_benchmark --dataset benchmark/queries_tools.json --output benchmark/results-tools.json
+NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules python -m benchmark.run_benchmark --dataset benchmark/queries_vision.json --output benchmark/results-vision.json
+NR_MODEL_MODE=ollama NR_DECISION_MODEL=rules python -m benchmark.run_benchmark --dataset benchmark/queries_audio.json --output benchmark/results-audio.json
+
+# Calibration sweep & embeddings A/B comparison:
+python benchmark/calibrate.py benchmark/results-calibration.json
+python benchmark/retrieval_ab.py
 ```
 
-Routing accuracy judges the *initial* strategy (an escalation
-is the safety net working, not a miss). Mock-mode runs check
-the harness only; their numbers are meaningless by design.
+Saved real-model summaries live in `benchmark/`:
+`results-full24-tuned.json`, `results-cost-rules.json`,
+`results_multipart.json`, `results-tools.json`, `results-vision.json`,
+`results-audio.json`, `results-calibration.json`,
+`retrieval_ab_results.json`, plus earlier `results-pilot9.json`,
+`results-full24.json`, and `results-cost.json`. Routing accuracy judges the *initial*
+strategy (an escalation is the safety net working, not a miss).
+Mock-mode runs check the harness only; their numbers are
+meaningless by design.
 
 ## Tests
 
 ```bash
-pytest -q   # 118 tests
+pytest -q                         # full suite (121 tests)
+pytest -q tests/test_routing.py   # single test module
 ```
 
 Routing, graph validation, the full pipeline, escalation,
-retrieval, tools, multimodal paths, auth, the MCP protocol
-round-trip, and a real embedded-Qdrant round-trip. Tests that
-need optional packages (Qdrant, faster-whisper, MCP SDK) skip
-when those aren't installed.
+retrieval, tools, multimodal paths, auth, trace persistence,
+the MCP protocol round-trip, and a real embedded-Qdrant
+round-trip. Tests that need optional packages (`qdrant-client`,
+`faster-whisper`, `mcp`) skip automatically when those aren't
+installed.
 
 ## Project structure
 
@@ -225,24 +340,29 @@ backend/
   retrieval/      embeddings, document loader, vector stores, retrieval service
   validation/     verifier, confidence estimator, escalation controller
   optimization/   budget manager
-  observability/  execution tracer (+ Prometheus exposition)
+  observability/  execution tracer (+ JSONL persistence & Prometheus exposition)
+  static/         built-in /dashboard HTML UI
   main.py         FastAPI app (REST, dashboards, metrics, auth)
-frontend/         Next.js console (proxies /api to FastAPI)
+frontend/         Next.js console (proxies /api/* to FastAPI)
 mcp_server.py     MCP interface over the same pipeline
-benchmark/        datasets, runner, calibration + retrieval A/B tools
-tests/            pytest suite
+benchmark/        datasets, runner, calibration + retrieval A/B tools, saved results
+tests/            pytest suite (19 test modules)
+requirements.txt  core dependencies + commented optional extras
+Dockerfile        backend container image
+docker-compose.yml  api + web + qdrant stack
+.env.example      environment variable template
 ```
 
 ---
 
 ## Development log — measured results
 
-Everything below is the build log with the real
+Everything below is the chronological build log with the real
 numbers as they were measured, including the tuning, the
 calibration study, the wrong-configuration runs and what they
 taught. The headline table above is drawn from these sections.
 
-## Overhead tuning
+### Overhead tuning
 
 Two overhead leaks found in the full 24-query run, fixed without
 changing any routing decision:
@@ -263,7 +383,7 @@ Tests: 27 passing (4 new in tests/test_tuning.py). Re-run
 `python -m benchmark.run_benchmark` with NR_MODEL_MODE=ollama to
 refresh the results table with tuned numbers.
 
-## LLM decision model
+### LLM decision model
 
 The router itself can now be a model. `LLMDecisionModel`
 (backend/intelligence/decision_model.py) asks a lightweight LLM —
@@ -275,7 +395,8 @@ build_plan() and must pass the graph validator.
 Safety rails, in order:
 1. Guardrails outrank the model: high-risk or document inputs are
    forced to verified_large whatever the model proposes.
-2. The model may only pick one of the three registered strategies.
+2. The model may only pick one of the registered strategies
+   (originally 3 in Phase 2; expanded to 7 in later phases).
 3. Non-JSON output, an unknown strategy, or an unreachable model
    falls back to the rule-based router — routing can never take the
    system down.
@@ -285,19 +406,23 @@ Safety rails, in order:
 
 Enable it (default stays "rules" for reproducible benchmarks):
 
-    export NR_DECISION_MODEL=llm
-    export NR_MODEL_MODE=ollama         # counterpart; needs real models
+```bash
+export NR_DECISION_MODEL=llm
+export NR_MODEL_MODE=ollama         # counterpart; needs real models
+```
 
 Router A/B experiment: run the benchmark once per mode and compare
 routing accuracy and the overhead the LLM router adds:
 
-    NR_DECISION_MODEL=rules python -m benchmark.run_benchmark
-    NR_DECISION_MODEL=llm   python -m benchmark.run_benchmark
+```bash
+NR_DECISION_MODEL=rules python -m benchmark.run_benchmark
+NR_DECISION_MODEL=llm   python -m benchmark.run_benchmark
+```
 
 Tests: 35 passing (8 new in tests/test_decision_model.py, all with
 stub adapters — no real model needed).
 
-### Router A/B results (real, local Ollama, 24 queries)
+#### Router A/B results (real, local Ollama, 24 queries)
 
 | Router | Routing | NR latency | NR tokens | Quality |
 |---|---|---|---|---|
@@ -321,7 +446,7 @@ Findings:
   generalisation to query types nobody wrote rules for, not beating
   rules on a fixed set. Rules therefore remain the default.
 
-## Dynamic execution DAGs
+### Dynamic execution DAGs
 
 Plans are no longer only three fixed templates:
 
@@ -350,9 +475,12 @@ Plans are no longer only three fixed templates:
 
 Tests: 48 passing (13 new in tests/test_phase3.py, stub adapters).
 Multipart benchmark:
-    python -m benchmark.run_benchmark --dataset benchmark/queries_multipart.json --output benchmark/results_multipart.json
 
-## Retrieval upgrade — real documents + embeddings
+```bash
+python -m benchmark.run_benchmark --dataset benchmark/queries_multipart.json --output benchmark/results_multipart.json
+```
+
+### Retrieval upgrade — real documents + embeddings
 
 Retrieval is no longer a fixed toy corpus scored by hand:
 
@@ -379,7 +507,7 @@ Retrieval is no longer a fixed toy corpus scored by hand:
 Tests: 54 passing (6 new in tests/test_retrieval_upgrade.py,
 including a generated-PDF ingestion test).
 
-## Dashboard — visual execution graph
+### Dashboard — visual execution graph
 
 The dashboard now renders the execution graph as a real DAG (SVG):
 nodes are laid out in topological levels — parallel branches appear
@@ -394,7 +522,7 @@ trace so it places correctly in decomposed and LLM-planned graphs.
 Tests: 56 passing (2 new in tests/test_dashboard.py; the layout
 logic is also exercised headlessly against a decomposed trace).
 
-## Embeddings A/B results (benchmark/retrieval_ab.py)
+### Embeddings A/B results (benchmark/retrieval_ab.py)
 
 8 probes over the seed corpus — 3 keyword-style (query uses the
 document's own words) and 5 paraphrase-style (same meaning, different
@@ -421,7 +549,7 @@ Findings:
   install (torch) exactly when users phrase things their own way.
   Full per-probe data: benchmark/retrieval_ab_results.json.
 
-## Confidence calibration
+### Confidence calibration
 
 Method: a fresh 24-query Ollama run whose rows record the final
 confidence score next to measured quality (benchmark/calibrate.py
@@ -479,7 +607,7 @@ Findings:
   strategy 24/24 — but the token figures belong to the LLM-router
   configuration and are not comparable to the rules run.
 
-## Cost model & budgets
+### Cost model & budgets
 
 Until now the dollar figures only existed in mock mode: the Ollama
 adapter returned cost_usd = 0.0 ("local inference is free"), so in
@@ -496,6 +624,7 @@ prices in backend/models/model_registry.py):
 | large | 0.0025 |
 | verifier | 0.0006 |
 | retrieval node | 0.00005 flat |
+| tool node | 0.00002 flat |
 
 Local inference has no invoice, so these are MODELLED costs: real
 token counts priced at the reference card, which makes routing
@@ -555,7 +684,7 @@ decision call runs on the cheapest tier. Token overhead is not
 cost overhead when the overhead itself is routed cheaply -
 which is, in miniature, the platform's whole thesis.
 
-## Tool engine
+### Tool engine
 
 The architecture document's Tool Engine ("APIs / Python / Search";
 execution layer: "Tool executor — APIs, calculations, web
@@ -609,7 +738,7 @@ perfect, 94.7% faster and 93.9% cheaper than always-large
 architecture document's core claim in miniature: choose the
 right computational pathway, don't just buy a bigger model.
 
-## Multimodal engine — vision
+### Multimodal engine — vision
 
 The architecture routes multimodal requests "through OCR, vision
 or audio preprocessing only when required" (section A). That is
@@ -666,7 +795,7 @@ for an actual perception pass: llava:7b on a MacBook Air is slow
 of the three; a smaller vision model (moondream via
 NR_VISION_MODEL) is the obvious lever on the latency.
 
-## Qdrant vector store + Next.js frontend
+### Qdrant vector store + Next.js frontend
 
 The last two named technologies in the architecture document are
 now in place, both behind seams the design already had:
@@ -694,7 +823,9 @@ now in place, both behind seams the design already had:
   running API. The built-in /dashboard remains the
   zero-dependency fallback. Run it with:
 
-      cd frontend && npm install && npm run dev   # http://localhost:3000
+```bash
+cd frontend && npm install && npm run dev   # http://localhost:3000
+```
 
 With this, every subsystem and technology named in the
 architecture document is implemented: routing intelligence, LLM
@@ -704,7 +835,7 @@ calibrated thresholds, a priced budget system, HoneyHive-style
 observability, and benchmarked quality-per-unit-cost against
 always-large and always-medium baselines. 103 tests.
 
-## Audio path
+### Audio path
 
 The last capability named in the architecture (section E: "Audio
 model — speech recognition"; section 1: Text / PDF / Image /
@@ -763,7 +894,7 @@ With this, every row of the architecture's execution table —
 small/medium/large LLMs, embeddings, vector DB, vision, OCR,
 audio, tools, verification — is implemented and tested.
 
-## Infrastructure pack
+### Infrastructure pack
 
 The deployment rows of the architecture's stack table:
 
@@ -771,7 +902,7 @@ The deployment rows of the architecture's stack table:
   NR_API_KEY and every non-public route requires it via the
   X-API-Key header or a Bearer token; unset = open (the local
   default). Public routes stay public: /, /health, /dashboard,
-  /docs. The key is read per request (rotation without restart),
+  /docs, /openapi.json. The key is read per request (rotation without restart),
   /health reports `auth_enabled`, and the built-in dashboard has
   a key field (stored in localStorage) that sends it on every
   call. **Session management**: /query accepts a session_id,
@@ -797,7 +928,7 @@ The deployment rows of the architecture's stack table:
   uploads on the filesystem — so they are documented here as the
   production swap rather than deployed unused. 117 tests.
 
-## MCP server — the agent interface
+### MCP server — the agent interface
 
 NeuroRoute now speaks two protocols over one execution core:
 
@@ -837,3 +968,14 @@ the client's MCP config:
 
 The usual NR_* variables configure the MCP server's pipeline
 exactly as they configure the API server. 118 tests.
+
+### Trace persistence
+
+`ExecutionTracer` (`backend/observability/execution_tracer.py`)
+appends traces to `data/traces.jsonl` by default (`NR_TRACES_FILE`
+overrides the path; setting it to empty disables persistence) and
+reloads up to the last 1,000 traces on startup. Because in-memory
+request IDs restart at `req_0001` after a restart, collisions with
+loaded IDs are suffixed (`req_0001-2`, ...) so history is never
+overwritten, and corrupt JSONL lines are skipped gracefully.
+3 new tests in `tests/test_tracer_persistence.py` (121 tests total).
