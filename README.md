@@ -18,6 +18,11 @@ overhead included in NeuroRoute's own totals.
 Everything runs locally (Ollama) with a deterministic mock mode
 for tests and demos; no API keys are required.
 
+**Also on Agensi:** NeuroRoute is published as an agent skill —
+[NeuroRoute — Adaptive LLM Inference Router](https://agensi.io/skills/neuroroute-adaptive-llm-inference-router) —
+so a connected AI agent can install, run and operate this
+platform from the skill package.
+
 ## Headline results (real local models)
 
 | Benchmark | Routing | Quality (NR vs large / medium) | Headline |
